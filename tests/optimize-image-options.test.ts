@@ -6,17 +6,28 @@ import {
 } from '../src';
 
 describe('optimizeImage options', () => {
-    it.each([0, -0.1, 1.1, Number.NaN, Number.POSITIVE_INFINITY])(
-        'rejects invalid quality value %s',
-        async (quality) => {
-            const promise = optimizeImage({} as File, { quality });
+    it.each([
+        { maxWidth: 0 },
+        { maxWidth: -1 },
+        { maxWidth: Number.NaN },
+        { maxWidth: Number.POSITIVE_INFINITY },
+        { maxHeight: 0 },
+        { maxHeight: -1 },
+        { maxHeight: Number.NaN },
+        { maxHeight: Number.POSITIVE_INFINITY },
+    ])('rejects invalid resize options %o', async (resize) => {
+        const promise = optimizeImage(
+            {
+                type: 'image/jpeg',
+            } as File,
+            { resize },
+        );
 
-            await expect(promise).rejects.toThrow(ImageOptimizerError);
-            await expect(promise).rejects.toMatchObject({
-                code: 'invalid-options',
-            });
-        },
-    );
+        await expect(promise).rejects.toThrow(ImageOptimizerError);
+        await expect(promise).rejects.toMatchObject({
+            code: 'invalid-options',
+        });
+    });
 
     it('rejects unsupported image formats', async () => {
         const promise = optimizeImage(

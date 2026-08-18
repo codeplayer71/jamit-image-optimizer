@@ -2,13 +2,17 @@ import { ImageOptimizerError } from './errors';
 import type {
     ImageOptimizationOptions,
     ImageOptimizationResult,
+    ImageResizeOptions,
 } from './types';
 
 type WorkerResult = {
     buffer: ArrayBuffer;
-    width: number;
-    height: number;
+    originalWidth: number;
+    originalHeight: number;
+    outputWidth: number;
+    outputHeight: number;
     decodeMs: number;
+    resizeMs: number;
     encodeMs: number;
 };
 
@@ -24,6 +28,18 @@ export async function optimizeImage(
         throw new ImageOptimizerError(
             'invalid-options',
             'quality must be greater than 0 and less than or equal to 1.',
+        );
+    }
+
+    const { maxWidth, maxHeight } = options.resize ?? {};
+
+    if (
+        (maxWidth !== undefined && (!Number.isFinite(maxWidth) || maxWidth <= 0)) ||
+        (maxHeight !== undefined && (!Number.isFinite(maxHeight) || maxHeight <= 0))
+    ) {
+        throw new ImageOptimizerError(
+            'invalid-options',
+            'resize dimensions must be greater than 0.',
         );
     }
 
@@ -44,7 +60,11 @@ export async function optimizeImage(
     const startedAt = performance.now();
     const inputBuffer = await file.arrayBuffer();
 
-    const workerResult = await processImage(inputBuffer, quality);
+    const workerResult = await processImage(
+        inputBuffer,
+        quality,
+        options.resize,
+    );
 
     const outputFile = new File([workerResult.buffer], file.name, {
         type: 'image/jpeg',
@@ -62,15 +82,15 @@ export async function optimizeImage(
                 name: file.name,
                 type: file.type,
                 size: file.size,
-                width: workerResult.width,
-                height: workerResult.height,
+                width: workerResult.originalWidth,
+                height: workerResult.originalHeight,
             },
             output: {
                 name: file.name,
                 type: file.type,
                 size: file.size,
-                width: workerResult.width,
-                height: workerResult.height,
+                width: workerResult.originalWidth,
+                height: workerResult.originalHeight,
             },
             savings: {
                 bytes: 0,
@@ -80,6 +100,7 @@ export async function optimizeImage(
             timing: {
                 totalMs: performance.now() - startedAt,
                 decodeMs: workerResult.decodeMs,
+                resizeMs: workerResult.resizeMs,
                 encodeMs: workerResult.encodeMs,
             },
         };
@@ -95,15 +116,15 @@ export async function optimizeImage(
             name: file.name,
             type: file.type,
             size: file.size,
-            width: workerResult.width,
-            height: workerResult.height,
+            width: workerResult.originalWidth,
+            height: workerResult.originalHeight,
         },
         output: {
             name: outputFile.name,
             type: outputFile.type,
             size: outputFile.size,
-            width: workerResult.width,
-            height: workerResult.height,
+            width: workerResult.outputWidth,
+            height: workerResult.outputHeight,
         },
         savings: {
             bytes: savedBytes,
@@ -113,6 +134,7 @@ export async function optimizeImage(
         timing: {
             totalMs: performance.now() - startedAt,
             decodeMs: workerResult.decodeMs,
+            resizeMs: workerResult.resizeMs,
             encodeMs: workerResult.encodeMs,
         },
     };
@@ -121,6 +143,7 @@ export async function optimizeImage(
 function processImage(
     buffer: ArrayBuffer,
     quality: number,
+    resize?: ImageResizeOptions,
 ): Promise<WorkerResult> {
     return new Promise((resolve, reject) => {
         const worker = new Worker(
@@ -150,6 +173,12 @@ function processImage(
             {
                 buffer,
                 quality: quality * 100,
+                ...(resize?.maxWidth !== undefined && {
+                    maxWidth: resize.maxWidth,
+                }),
+                ...(resize?.maxHeight !== undefined && {
+                    maxHeight: resize.maxHeight,
+                }),
             },
             [buffer],
         );

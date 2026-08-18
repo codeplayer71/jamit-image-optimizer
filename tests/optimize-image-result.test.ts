@@ -12,9 +12,12 @@ class WorkerMock {
         this.onmessage?.({
             data: {
                 buffer,
-                width: 100,
-                height: 100,
+                originalWidth: 100,
+                originalHeight: 100,
+                outputWidth: 100,
+                outputHeight: 100,
                 decodeMs: 10,
+                resizeMs: 0,
                 encodeMs: 20,
             },
         } as MessageEvent);
@@ -45,7 +48,23 @@ describe('optimizeImage result', () => {
         expect(result.file).toBe(file);
         expect(result.optimized).toBe(false);
         expect(result.reason).toBe('output-larger-than-input');
-        expect(result.output.size).toBe(file.size);
+
+        expect(result.original).toEqual({
+            name: 'image.jpg',
+            type: 'image/jpeg',
+            size: 4,
+            width: 100,
+            height: 100,
+        });
+
+        expect(result.output).toEqual({
+            name: 'image.jpg',
+            type: 'image/jpeg',
+            size: 4,
+            width: 100,
+            height: 100,
+        });
+
         expect(result.savings.bytes).toBe(0);
         expect(result.savings.ratio).toBe(1);
         expect(result.savings.percent).toBe(0);
@@ -61,9 +80,12 @@ describe('optimizeImage result', () => {
                     this.onmessage?.({
                         data: {
                             buffer,
-                            width: 100,
-                            height: 100,
+                            originalWidth: 200,
+                            originalHeight: 100,
+                            outputWidth: 100,
+                            outputHeight: 50,
                             decodeMs: 10,
+                            resizeMs: 5,
                             encodeMs: 20,
                         },
                     } as MessageEvent);
@@ -94,7 +116,7 @@ describe('optimizeImage result', () => {
             name: 'image.jpg',
             type: 'image/jpeg',
             size: 4,
-            width: 100,
+            width: 200,
             height: 100,
         });
 
@@ -103,12 +125,15 @@ describe('optimizeImage result', () => {
             type: 'image/jpeg',
             size: 2,
             width: 100,
-            height: 100,
+            height: 50,
         });
 
-        expect(result.output.size).toBe(2);
         expect(result.savings.bytes).toBe(2);
         expect(result.savings.ratio).toBe(0.5);
         expect(result.savings.percent).toBe(50);
+
+        expect(result.timing.decodeMs).toBe(10);
+        expect(result.timing.resizeMs).toBe(5);
+        expect(result.timing.encodeMs).toBe(20);
     });
 });

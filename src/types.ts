@@ -1,3 +1,16 @@
+export type ImageResizeOptions = {
+    maxWidth?: number;
+    maxHeight?: number;
+};
+
+export type ImageOptimizationOptions = {
+    quality?: number;
+    resize?: ImageResizeOptions;
+};
+
+export type ImageOptimizationSkipReason =
+    | 'output-larger-than-input';
+
 export type ImageOptimizationResult = {
     file: File;
     optimized: boolean;
@@ -28,13 +41,7 @@ export type ImageOptimizationResult = {
     timing: {
         totalMs: number;
         decodeMs: number;
+        resizeMs: number;
         encodeMs: number;
     };
 };
-
-export type ImageOptimizationOptions = {
-    quality?: number;
-};
-
-export type ImageOptimizationSkipReason =
-    | 'output-larger-than-input';

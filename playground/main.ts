@@ -23,6 +23,10 @@ fileInput.addEventListener('change', async () => {
     try {
         const result = await optimizeImage(file, {
             quality: 0.75,
+            resize: {
+                maxWidth: 1920,
+                maxHeight: 1920,
+            },
         });
 
         if (outputUrl) {
@@ -46,6 +50,7 @@ fileInput.addEventListener('change', async () => {
                 timing: {
                     totalMs: Math.round(result.timing.totalMs),
                     decodeMs: Math.round(result.timing.decodeMs),
+                    resizeMs: Math.round(result.timing.resizeMs),
                     encodeMs: Math.round(result.timing.encodeMs),
                 },
             },
