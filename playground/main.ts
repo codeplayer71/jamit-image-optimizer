@@ -43,7 +43,9 @@ fileInput.addEventListener('change', async () => {
 
     try {
         const result = await optimizeImage(file, {
-            quality: 0.75,
+            quality: 0.85,
+            targetSize: 500_000,
+            minQuality: 0.5,
             resize: {
                 maxWidth: 1920,
                 maxHeight: 1920,
@@ -67,6 +69,7 @@ fileInput.addEventListener('change', async () => {
                 reason: result.reason ?? null,
                 original: result.original,
                 output: result.output,
+                compression: result.compression,
                 savings: {
                     bytes: result.savings.bytes,
                     ratio: result.savings.ratio,

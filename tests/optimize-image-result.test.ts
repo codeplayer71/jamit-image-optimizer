@@ -11,6 +11,7 @@ class WorkerMock {
 
         this.onmessage?.({
             data: {
+                type: 'result',
                 buffer,
                 originalWidth: 100,
                 originalHeight: 100,
@@ -19,6 +20,8 @@ class WorkerMock {
                 decodeMs: 10,
                 resizeMs: 0,
                 encodeMs: 20,
+                finalQuality: 80,
+                encodeAttempts: 1,
             },
         } as MessageEvent);
     }
@@ -79,6 +82,7 @@ describe('optimizeImage result', () => {
 
                     this.onmessage?.({
                         data: {
+                            type: 'result',
                             buffer,
                             originalWidth: 200,
                             originalHeight: 100,
@@ -87,6 +91,8 @@ describe('optimizeImage result', () => {
                             decodeMs: 10,
                             resizeMs: 5,
                             encodeMs: 20,
+                            finalQuality: 80,
+                            encodeAttempts: 1,
                         },
                     } as MessageEvent);
                 }
@@ -126,6 +132,11 @@ describe('optimizeImage result', () => {
             size: 2,
             width: 100,
             height: 50,
+        });
+
+        expect(result.compression).toEqual({
+            quality: 0.8,
+            encodeAttempts: 1,
         });
 
         expect(result.savings.bytes).toBe(2);
@@ -229,6 +240,8 @@ describe('optimizeImage result', () => {
                             decodeMs: 10,
                             resizeMs: 5,
                             encodeMs: 20,
+                            finalQuality: 80,
+                            encodeAttempts: 1,
                         },
                     } as MessageEvent);
                 }
@@ -259,5 +272,52 @@ describe('optimizeImage result', () => {
             'finalizing',
             'completed',
         ]);
+    });
+
+    it('returns target-size compression metadata', async () => {
+        vi.stubGlobal(
+            'Worker',
+            class extends WorkerMock {
+                override postMessage(): void {
+                    this.onmessage?.({
+                        data: {
+                            type: 'result',
+                            buffer: new ArrayBuffer(2),
+                            originalWidth: 200,
+                            originalHeight: 100,
+                            outputWidth: 100,
+                            outputHeight: 50,
+                            decodeMs: 10,
+                            resizeMs: 5,
+                            encodeMs: 40,
+                            finalQuality: 68,
+                            encodeAttempts: 4,
+                            targetReached: true,
+                        },
+                    } as MessageEvent);
+                }
+            },
+        );
+
+        const file = new File(
+            [new Uint8Array(4)],
+            'image.jpg',
+            {
+                type: 'image/jpeg',
+            },
+        );
+
+        const result = await optimizeImage(file, {
+            quality: 0.85,
+            targetSize: 1_000_000,
+            minQuality: 0.6,
+        });
+
+        expect(result.compression).toEqual({
+            quality: 0.68,
+            encodeAttempts: 4,
+            targetSize: 1_000_000,
+            targetReached: true,
+        });
     });
 });

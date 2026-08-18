@@ -16,6 +16,9 @@ type WorkerResult = {
     decodeMs: number;
     resizeMs: number;
     encodeMs: number;
+    finalQuality: number;
+    encodeAttempts: number;
+    targetReached?: boolean;
 };
 
 type WorkerStatus = {
@@ -38,6 +41,37 @@ export async function optimizeImage(
         throw new ImageOptimizerError(
             'invalid-options',
             'quality must be greater than 0 and less than or equal to 1.',
+        );
+    }
+
+    const targetSize = options.targetSize;
+
+    if (
+        targetSize !== undefined &&
+        (!Number.isSafeInteger(targetSize) || targetSize <= 0)
+    ) {
+        throw new ImageOptimizerError(
+            'invalid-options',
+            'targetSize must be a positive integer number of bytes.',
+        );
+    }
+
+    const minQuality = options.minQuality;
+
+    if (
+        minQuality !== undefined &&
+        (!Number.isFinite(minQuality) || minQuality <= 0 || minQuality > 1)
+    ) {
+        throw new ImageOptimizerError(
+            'invalid-options',
+            'minQuality must be greater than 0 and less than or equal to 1.',
+        );
+    }
+
+    if (minQuality !== undefined && minQuality > quality) {
+        throw new ImageOptimizerError(
+            'invalid-options',
+            'minQuality must be less than or equal to quality.',
         );
     }
 
@@ -86,6 +120,8 @@ export async function optimizeImage(
         inputBuffer,
         quality,
         options.resize,
+        options.targetSize,
+        options.minQuality,
         options.signal,
         options.onStatus,
     );
@@ -120,6 +156,16 @@ export async function optimizeImage(
                 size: file.size,
                 width: workerResult.originalWidth,
                 height: workerResult.originalHeight,
+            },
+            compression: {
+                quality: workerResult.finalQuality / 100,
+                encodeAttempts: workerResult.encodeAttempts,
+                ...(options.targetSize !== undefined && {
+                    targetSize: options.targetSize,
+                }),
+                ...(workerResult.targetReached !== undefined && {
+                    targetReached: workerResult.targetReached,
+                }),
             },
             savings: {
                 bytes: 0,
@@ -162,6 +208,16 @@ export async function optimizeImage(
             width: workerResult.outputWidth,
             height: workerResult.outputHeight,
         },
+        compression: {
+            quality: workerResult.finalQuality / 100,
+            encodeAttempts: workerResult.encodeAttempts,
+            ...(options.targetSize !== undefined && {
+                targetSize: options.targetSize,
+            }),
+            ...(workerResult.targetReached !== undefined && {
+                targetReached: workerResult.targetReached,
+            }),
+        },
         savings: {
             bytes: savedBytes,
             ratio,
@@ -187,6 +243,8 @@ function processImage(
     buffer: ArrayBuffer,
     quality: number,
     resize?: ImageResizeOptions,
+    targetSize?: number,
+    minQuality?: number,
     signal?: AbortSignal,
     onStatus?: (status: ImageProcessingStatus) => void,
 ): Promise<WorkerResult> {
@@ -250,6 +308,12 @@ function processImage(
             {
                 buffer,
                 quality: quality * 100,
+                ...(targetSize !== undefined && {
+                    targetSize,
+                }),
+                ...(minQuality !== undefined && {
+                    minQuality: minQuality * 100,
+                }),
                 ...(resize?.maxWidth !== undefined && {
                     maxWidth: resize.maxWidth,
                 }),

@@ -3,8 +3,23 @@ export type ImageResizeOptions = {
     maxHeight?: number;
 };
 
+export type ImageProcessingStage =
+    | 'queued'
+    | 'decoding'
+    | 'resizing'
+    | 'encoding'
+    | 'finalizing'
+    | 'completed';
+
+export type ImageProcessingStatus = {
+    stage: ImageProcessingStage;
+    progress: number | null;
+};
+
 export type ImageOptimizationOptions = {
     quality?: number;
+    targetSize?: number;
+    minQuality?: number;
     resize?: ImageResizeOptions;
     signal?: AbortSignal;
     onStatus?: (status: ImageProcessingStatus) => void;
@@ -34,6 +49,13 @@ export type ImageOptimizationResult = {
         height: number;
     };
 
+    compression: {
+        quality: number;
+        encodeAttempts: number;
+        targetSize?: number;
+        targetReached?: boolean;
+    };
+
     savings: {
         bytes: number;
         ratio: number;
@@ -46,17 +68,4 @@ export type ImageOptimizationResult = {
         resizeMs: number;
         encodeMs: number;
     };
-};
-
-export type ImageProcessingStage =
-    | 'queued'
-    | 'decoding'
-    | 'resizing'
-    | 'encoding'
-    | 'finalizing'
-    | 'completed';
-
-export type ImageProcessingStatus = {
-    stage: ImageProcessingStage;
-    progress: number | null;
 };

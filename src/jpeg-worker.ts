@@ -4,13 +4,19 @@ import { decode, encode } from '@jsquash/jpeg';
 import resize from '@jsquash/resize';
 
 import { calculateResizeDimensions } from './resize';
+import { searchTargetSize } from './target-size';
 
 type ProcessImageMessage = {
     buffer: ArrayBuffer;
     quality: number;
+    targetSize?: number;
+    minQuality?: number;
     maxWidth?: number;
     maxHeight?: number;
 };
+
+const DEFAULT_MIN_QUALITY = 50;
+const MAX_ENCODE_ATTEMPTS = 6;
 
 function postStatus(
     stage: 'decoding' | 'resizing' | 'encoding',
@@ -68,9 +74,38 @@ self.onmessage = async (event: MessageEvent<ProcessImageMessage>) => {
 
     const encodeStartedAt = performance.now();
 
-    const outputBuffer = await encode(outputImageData, {
-        quality: event.data.quality,
-    });
+    let outputBuffer: ArrayBuffer;
+    let finalQuality = event.data.quality;
+    let encodeAttempts = 1;
+    let targetReached: boolean | undefined;
+
+    if (event.data.targetSize !== undefined) {
+        const searchResult = await searchTargetSize({
+            targetSize: event.data.targetSize,
+            initialQuality: event.data.quality,
+            minQuality: event.data.minQuality ?? DEFAULT_MIN_QUALITY,
+            maxAttempts: MAX_ENCODE_ATTEMPTS,
+            encode: async (quality) => {
+                const buffer = await encode(outputImageData, {
+                    quality,
+                });
+
+                return {
+                    value: buffer,
+                    size: buffer.byteLength,
+                };
+            },
+        });
+
+        outputBuffer = searchResult.value;
+        finalQuality = searchResult.quality;
+        encodeAttempts = searchResult.attempts;
+        targetReached = searchResult.targetReached;
+    } else {
+        outputBuffer = await encode(outputImageData, {
+            quality: event.data.quality,
+        });
+    }
 
     const encodeMs = performance.now() - encodeStartedAt;
 
@@ -85,6 +120,11 @@ self.onmessage = async (event: MessageEvent<ProcessImageMessage>) => {
             decodeMs,
             resizeMs,
             encodeMs,
+            finalQuality,
+            encodeAttempts,
+            ...(targetReached !== undefined && {
+                targetReached,
+            }),
         },
         {
             transfer: [outputBuffer],
