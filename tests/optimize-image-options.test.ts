@@ -41,4 +41,23 @@ describe('optimizeImage options', () => {
             code: 'unsupported-format',
         });
     });
+
+    it('rejects when the signal is already aborted', async () => {
+        const controller = new AbortController();
+        controller.abort();
+
+        const promise = optimizeImage(
+            {
+                type: 'image/jpeg',
+            } as File,
+            {
+                signal: controller.signal,
+            },
+        );
+
+        await expect(promise).rejects.toThrow(ImageOptimizerError);
+        await expect(promise).rejects.toMatchObject({
+            code: 'aborted',
+        });
+    });
 });

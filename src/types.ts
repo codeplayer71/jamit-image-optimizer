@@ -6,6 +6,7 @@ export type ImageResizeOptions = {
 export type ImageOptimizationOptions = {
     quality?: number;
     resize?: ImageResizeOptions;
+    signal?: AbortSignal;
 };
 
 export type ImageOptimizationSkipReason =

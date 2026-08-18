@@ -2,7 +2,8 @@ export type ImageOptimizerErrorCode =
     | 'unsupported-format'
     | 'invalid-options'
     | 'browser-not-supported'
-    | 'worker-failed';
+    | 'worker-failed'
+    | 'aborted';
 
 export class ImageOptimizerError extends Error {
     readonly code: ImageOptimizerErrorCode;

@@ -136,4 +136,56 @@ describe('optimizeImage result', () => {
         expect(result.timing.resizeMs).toBe(5);
         expect(result.timing.encodeMs).toBe(20);
     });
+
+    it('terminates the active worker when aborted', async () => {
+        const terminate = vi.fn();
+
+        let resolveWorkerCreated!: () => void;
+
+        const workerCreated = new Promise<void>((resolve) => {
+            resolveWorkerCreated = resolve;
+        });
+
+        vi.stubGlobal(
+            'Worker',
+            class {
+                onmessage: ((event: MessageEvent) => void) | null = null;
+                onerror: ((event: ErrorEvent) => void) | null = null;
+
+                constructor() {
+                    resolveWorkerCreated();
+                }
+
+                postMessage(): void {}
+
+                terminate(): void {
+                    terminate();
+                }
+            },
+        );
+
+        const controller = new AbortController();
+
+        const file = new File(
+            [new Uint8Array(4)],
+            'image.jpg',
+            {
+                type: 'image/jpeg',
+            },
+        );
+
+        const promise = optimizeImage(file, {
+            signal: controller.signal,
+        });
+
+        await workerCreated;
+
+        controller.abort();
+
+        await expect(promise).rejects.toMatchObject({
+            code: 'aborted',
+        });
+
+        expect(terminate).toHaveBeenCalledOnce();
+    });
 });

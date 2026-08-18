@@ -43,6 +43,13 @@ export async function optimizeImage(
         );
     }
 
+    if (options.signal?.aborted) {
+        throw new ImageOptimizerError(
+            'aborted',
+            'Image optimization was aborted.',
+        );
+    }
+
     if (file.type !== 'image/jpeg') {
         throw new ImageOptimizerError(
             'unsupported-format',
@@ -64,6 +71,7 @@ export async function optimizeImage(
         inputBuffer,
         quality,
         options.resize,
+        options.signal,
     );
 
     const outputFile = new File([workerResult.buffer], file.name, {
@@ -144,6 +152,7 @@ function processImage(
     buffer: ArrayBuffer,
     quality: number,
     resize?: ImageResizeOptions,
+    signal?: AbortSignal,
 ): Promise<WorkerResult> {
     return new Promise((resolve, reject) => {
         const worker = new Worker(
@@ -153,12 +162,35 @@ function processImage(
             },
         );
 
+        const handleAbort = () => {
+            worker.terminate();
+            signal?.removeEventListener('abort', handleAbort);
+
+            reject(
+                new ImageOptimizerError(
+                    'aborted',
+                    'Image optimization was aborted.',
+                ),
+            );
+        };
+
+        if (signal?.aborted) {
+            handleAbort();
+            return;
+        }
+
+        signal?.addEventListener('abort', handleAbort, {
+            once: true,
+        });
+
         worker.onmessage = (event: MessageEvent<WorkerResult>) => {
+            signal?.removeEventListener('abort', handleAbort);
             worker.terminate();
             resolve(event.data);
         };
 
         worker.onerror = (event) => {
+            signal?.removeEventListener('abort', handleAbort);
             worker.terminate();
 
             reject(
