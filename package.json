@@ -1,0 +1,39 @@
+{
+  "name": "jamit-image-optimizer",
+  "version": "0.0.0",
+  "private": true,
+  "description": "TypeScript-first image optimization pipeline for browser uploads.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite playground",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "build:playground": "vite build playground",
+    "preview:playground": "vite preview playground"
+  },
+  "keywords": [
+    "image",
+    "optimizer",
+    "compression",
+    "resize",
+    "webassembly",
+    "wasm",
+    "web-worker",
+    "upload",
+    "typescript"
+  ],
+  "author": "JamIT",
+  "license": "ISC",
+  "packageManager": "pnpm@10.18.1",
+  "devDependencies": {
+    "@vitest/coverage-v8": "^4.1.10",
+    "typescript": "^7.0.2",
+    "vite": "^8.2.1",
+    "vitest": "^4.1.10"
+  },
+  "dependencies": {
+    "@jsquash/jpeg": "^1.6.0"
+  }
+}
