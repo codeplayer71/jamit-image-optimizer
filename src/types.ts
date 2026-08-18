@@ -1,3 +1,5 @@
+import type { ImageOptimizerError } from './errors';
+
 export type ImageResizeOptions = {
     maxWidth?: number;
     maxHeight?: number;
@@ -68,4 +70,51 @@ export type ImageOptimizationResult = {
         resizeMs: number;
         encodeMs: number;
     };
+};
+
+export type FileProcessingOutcome =
+    | 'optimized'
+    | 'unchanged'
+    | 'failed-passthrough';
+
+export type FileProcessingKind =
+    | 'image'
+    | 'passthrough';
+
+export type FileProcessingItemResult = {
+    index: number;
+    originalFile: File;
+    file: File;
+    kind: FileProcessingKind;
+    outcome: FileProcessingOutcome;
+    reason?: string;
+    optimization?: ImageOptimizationResult;
+    error?: ImageOptimizerError;
+};
+
+export type FileProcessingBatchSummary = {
+    totalFiles: number;
+    imageFiles: number;
+    optimizedFiles: number;
+    unchangedFiles: number;
+    failedOptimizations: number;
+    originalBytes: number;
+    outputBytes: number;
+    savedBytes: number;
+    savedPercent: number;
+};
+
+export type FileProcessingBatchResult = {
+    files: File[];
+    items: FileProcessingItemResult[];
+    summary: FileProcessingBatchSummary;
+};
+
+export type FileProcessingErrorMode =
+    | 'passthrough'
+    | 'throw';
+
+export type ProcessFilesOptions = ImageOptimizationOptions & {
+    errorMode?: FileProcessingErrorMode;
+    concurrency?: number;
 };

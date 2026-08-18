@@ -15,3 +15,13 @@ export class ImageOptimizerError extends Error {
         this.code = code;
     }
 }
+
+export function isImageOptimizerError(
+    error: unknown,
+): error is ImageOptimizerError {
+    return (
+        error instanceof Error &&
+        error.name === 'ImageOptimizerError' &&
+        'code' in error
+    );
+}
