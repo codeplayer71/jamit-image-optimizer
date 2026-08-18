@@ -333,4 +333,67 @@ describe('processFiles', () => {
             3,
         ]);
     });
+
+    it('aborts the entire batch and terminates active workers', async () => {
+        let createdWorkers = 0;
+        const terminate = vi.fn();
+
+        let resolveWorkersStarted!: () => void;
+
+        const workersStarted = new Promise<void>((resolve) => {
+            resolveWorkersStarted = resolve;
+        });
+
+        vi.stubGlobal(
+            'Worker',
+            class {
+                onmessage: ((event: MessageEvent) => void) | null = null;
+                onerror: ((event: ErrorEvent) => void) | null = null;
+
+                constructor() {
+                    createdWorkers += 1;
+
+                    if (createdWorkers === 2) {
+                        resolveWorkersStarted();
+                    }
+                }
+
+                postMessage(): void {}
+
+                terminate(): void {
+                    terminate();
+                }
+            },
+        );
+
+        const files = [
+            new File([new Uint8Array(4)], 'first.jpg', {
+                type: 'image/jpeg',
+            }),
+            new File([new Uint8Array(4)], 'second.jpg', {
+                type: 'image/jpeg',
+            }),
+            new File([new Uint8Array(4)], 'third.jpg', {
+                type: 'image/jpeg',
+            }),
+        ];
+
+        const controller = new AbortController();
+
+        const promise = processFiles(files, {
+            concurrency: 2,
+            signal: controller.signal,
+        });
+
+        await workersStarted;
+
+        controller.abort();
+
+        await expect(promise).rejects.toMatchObject({
+            code: 'aborted',
+        });
+
+        expect(createdWorkers).toBe(2);
+        expect(terminate).toHaveBeenCalledTimes(2);
+    });
 });

@@ -1,4 +1,4 @@
-import { optimizeImage } from '../src';
+import { processFiles } from '../src';
 
 const fileInput = document.querySelector<HTMLInputElement>('#file-input');
 const cancelButton =
@@ -27,9 +27,9 @@ cancelButton.addEventListener('click', () => {
 });
 
 fileInput.addEventListener('change', async () => {
-    const file = fileInput.files?.[0];
+    const files = fileInput.files;
 
-    if (!file) {
+    if (!files?.length) {
         return;
     }
 
@@ -42,7 +42,7 @@ fileInput.addEventListener('change', async () => {
     resultElement.textContent = 'Processing...';
 
     try {
-        const result = await optimizeImage(file, {
+        const result = await processFiles(files, {
             quality: 0.85,
             targetSize: 500_000,
             minQuality: 0.5,
@@ -50,6 +50,7 @@ fileInput.addEventListener('change', async () => {
                 maxWidth: 1920,
                 maxHeight: 1920,
             },
+            concurrency: 2,
             signal: controller.signal,
             onStatus(status) {
                 processingStatus.textContent = status.stage;
@@ -58,28 +59,35 @@ fileInput.addEventListener('change', async () => {
 
         if (outputUrl) {
             URL.revokeObjectURL(outputUrl);
+            outputUrl = null;
         }
 
-        outputUrl = URL.createObjectURL(result.file);
-        outputPreview.src = outputUrl;
+        const firstImage = result.items.find(
+            (item) => item.kind === 'image' && item.optimization,
+        );
+
+        if (firstImage) {
+            outputUrl = URL.createObjectURL(firstImage.file);
+            outputPreview.src = outputUrl;
+        } else {
+            outputPreview.removeAttribute('src');
+        }
 
         resultElement.textContent = JSON.stringify(
             {
-                optimized: result.optimized,
-                reason: result.reason ?? null,
-                original: result.original,
-                output: result.output,
-                compression: result.compression,
-                savings: {
-                    bytes: result.savings.bytes,
-                    ratio: result.savings.ratio,
-                    percent: Math.round(result.savings.percent * 100) / 100,
-                },
-                timing: {
-                    totalMs: Math.round(result.timing.totalMs),
-                    decodeMs: Math.round(result.timing.decodeMs),
-                    resizeMs: Math.round(result.timing.resizeMs),
-                    encodeMs: Math.round(result.timing.encodeMs),
+                files: result.items.map((item) => ({
+                    index: item.index,
+                    name: item.file.name,
+                    type: item.file.type,
+                    size: item.file.size,
+                    kind: item.kind,
+                    outcome: item.outcome,
+                    reason: item.reason ?? null,
+                })),
+                summary: {
+                    ...result.summary,
+                    savedPercent:
+                        Math.round(result.summary.savedPercent * 100) / 100,
                 },
             },
             null,
