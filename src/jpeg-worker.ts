@@ -12,7 +12,19 @@ type ProcessImageMessage = {
     maxHeight?: number;
 };
 
+function postStatus(
+    stage: 'decoding' | 'resizing' | 'encoding',
+): void {
+    self.postMessage({
+        type: 'status',
+        stage,
+        progress: null,
+    });
+}
+
 self.onmessage = async (event: MessageEvent<ProcessImageMessage>) => {
+    postStatus('decoding');
+
     const decodeStartedAt = performance.now();
     const originalImageData = await decode(event.data.buffer);
     const decodeMs = performance.now() - decodeStartedAt;
@@ -36,22 +48,35 @@ self.onmessage = async (event: MessageEvent<ProcessImageMessage>) => {
         outputDimensions.width !== originalImageData.width ||
         outputDimensions.height !== originalImageData.height;
 
-    const resizeStartedAt = performance.now();
+    let outputImageData = originalImageData;
+    let resizeMs = 0;
 
-    const outputImageData = shouldResize
-        ? await resize(originalImageData, outputDimensions)
-        : originalImageData;
+    if (shouldResize) {
+        postStatus('resizing');
 
-    const resizeMs = performance.now() - resizeStartedAt;
+        const resizeStartedAt = performance.now();
+
+        outputImageData = await resize(
+            originalImageData,
+            outputDimensions,
+        );
+
+        resizeMs = performance.now() - resizeStartedAt;
+    }
+
+    postStatus('encoding');
 
     const encodeStartedAt = performance.now();
+
     const outputBuffer = await encode(outputImageData, {
         quality: event.data.quality,
     });
+
     const encodeMs = performance.now() - encodeStartedAt;
 
     self.postMessage(
         {
+            type: 'result',
             buffer: outputBuffer,
             originalWidth: originalImageData.width,
             originalHeight: originalImageData.height,

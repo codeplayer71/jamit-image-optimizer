@@ -3,11 +3,19 @@ import { optimizeImage } from '../src';
 const fileInput = document.querySelector<HTMLInputElement>('#file-input');
 const cancelButton =
     document.querySelector<HTMLButtonElement>('#cancel-button');
+const processingStatus =
+    document.querySelector<HTMLSpanElement>('#processing-status');
 const resultElement = document.querySelector<HTMLPreElement>('#result');
 const outputPreview =
     document.querySelector<HTMLImageElement>('#output-preview');
 
-if (!fileInput || !cancelButton || !resultElement || !outputPreview) {
+if (
+    !fileInput ||
+    !cancelButton ||
+    !processingStatus ||
+    !resultElement ||
+    !outputPreview
+) {
     throw new Error('Required playground elements not found.');
 }
 
@@ -28,9 +36,9 @@ fileInput.addEventListener('change', async () => {
     activeController?.abort();
 
     const controller = new AbortController();
+
     activeController = controller;
     cancelButton.disabled = false;
-
     resultElement.textContent = 'Processing...';
 
     try {
@@ -41,6 +49,9 @@ fileInput.addEventListener('change', async () => {
                 maxHeight: 1920,
             },
             signal: controller.signal,
+            onStatus(status) {
+                processingStatus.textContent = status.stage;
+            },
         });
 
         if (outputUrl) {
@@ -80,6 +91,7 @@ fileInput.addEventListener('change', async () => {
         if (activeController === controller) {
             activeController = null;
             cancelButton.disabled = true;
+            processingStatus.textContent = 'Idle';
         }
     }
 });

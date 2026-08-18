@@ -188,4 +188,76 @@ describe('optimizeImage result', () => {
 
         expect(terminate).toHaveBeenCalledOnce();
     });
+
+    it('emits processing stages in order', async () => {
+        vi.stubGlobal(
+            'Worker',
+            class extends WorkerMock {
+                override postMessage(): void {
+                    this.onmessage?.({
+                        data: {
+                            type: 'status',
+                            stage: 'decoding',
+                            progress: null,
+                        },
+                    } as MessageEvent);
+
+                    this.onmessage?.({
+                        data: {
+                            type: 'status',
+                            stage: 'resizing',
+                            progress: null,
+                        },
+                    } as MessageEvent);
+
+                    this.onmessage?.({
+                        data: {
+                            type: 'status',
+                            stage: 'encoding',
+                            progress: null,
+                        },
+                    } as MessageEvent);
+
+                    this.onmessage?.({
+                        data: {
+                            type: 'result',
+                            buffer: new ArrayBuffer(2),
+                            originalWidth: 200,
+                            originalHeight: 100,
+                            outputWidth: 100,
+                            outputHeight: 50,
+                            decodeMs: 10,
+                            resizeMs: 5,
+                            encodeMs: 20,
+                        },
+                    } as MessageEvent);
+                }
+            },
+        );
+
+        const file = new File(
+            [new Uint8Array(4)],
+            'image.jpg',
+            {
+                type: 'image/jpeg',
+            },
+        );
+
+        const statuses: string[] = [];
+
+        await optimizeImage(file, {
+            onStatus(status) {
+                statuses.push(status.stage);
+            },
+        });
+
+        expect(statuses).toEqual([
+            'queued',
+            'decoding',
+            'resizing',
+            'encoding',
+            'finalizing',
+            'completed',
+        ]);
+    });
 });

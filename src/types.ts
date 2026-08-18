@@ -7,6 +7,7 @@ export type ImageOptimizationOptions = {
     quality?: number;
     resize?: ImageResizeOptions;
     signal?: AbortSignal;
+    onStatus?: (status: ImageProcessingStatus) => void;
 };
 
 export type ImageOptimizationSkipReason =
@@ -45,4 +46,17 @@ export type ImageOptimizationResult = {
         resizeMs: number;
         encodeMs: number;
     };
+};
+
+export type ImageProcessingStage =
+    | 'queued'
+    | 'decoding'
+    | 'resizing'
+    | 'encoding'
+    | 'finalizing'
+    | 'completed';
+
+export type ImageProcessingStatus = {
+    stage: ImageProcessingStage;
+    progress: number | null;
 };

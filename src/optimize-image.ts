@@ -2,10 +2,12 @@ import { ImageOptimizerError } from './errors';
 import type {
     ImageOptimizationOptions,
     ImageOptimizationResult,
+    ImageProcessingStatus,
     ImageResizeOptions,
 } from './types';
 
 type WorkerResult = {
+    type: 'result';
     buffer: ArrayBuffer;
     originalWidth: number;
     originalHeight: number;
@@ -15,6 +17,14 @@ type WorkerResult = {
     resizeMs: number;
     encodeMs: number;
 };
+
+type WorkerStatus = {
+    type: 'status';
+    stage: 'decoding' | 'resizing' | 'encoding';
+    progress: null;
+};
+
+type WorkerMessage = WorkerResult | WorkerStatus;
 
 const DEFAULT_QUALITY = 0.8;
 
@@ -64,6 +74,11 @@ export async function optimizeImage(
         );
     }
 
+    emitStatus(options.onStatus, {
+        stage: 'queued',
+        progress: null,
+    });
+
     const startedAt = performance.now();
     const inputBuffer = await file.arrayBuffer();
 
@@ -72,7 +87,13 @@ export async function optimizeImage(
         quality,
         options.resize,
         options.signal,
+        options.onStatus,
     );
+
+    emitStatus(options.onStatus, {
+        stage: 'finalizing',
+        progress: null,
+    });
 
     const outputFile = new File([workerResult.buffer], file.name, {
         type: 'image/jpeg',
@@ -82,7 +103,7 @@ export async function optimizeImage(
     const outputIsLarger = outputFile.size >= file.size;
 
     if (outputIsLarger) {
-        return {
+        const result: ImageOptimizationResult = {
             file,
             optimized: false,
             reason: 'output-larger-than-input',
@@ -112,12 +133,19 @@ export async function optimizeImage(
                 encodeMs: workerResult.encodeMs,
             },
         };
+
+        emitStatus(options.onStatus, {
+            stage: 'completed',
+            progress: null,
+        });
+
+        return result;
     }
 
     const savedBytes = file.size - outputFile.size;
     const ratio = outputFile.size / file.size;
 
-    return {
+    const result: ImageOptimizationResult = {
         file: outputFile,
         optimized: true,
         original: {
@@ -146,6 +174,13 @@ export async function optimizeImage(
             encodeMs: workerResult.encodeMs,
         },
     };
+
+    emitStatus(options.onStatus, {
+        stage: 'completed',
+        progress: null,
+    });
+
+    return result;
 }
 
 function processImage(
@@ -153,6 +188,7 @@ function processImage(
     quality: number,
     resize?: ImageResizeOptions,
     signal?: AbortSignal,
+    onStatus?: (status: ImageProcessingStatus) => void,
 ): Promise<WorkerResult> {
     return new Promise((resolve, reject) => {
         const worker = new Worker(
@@ -183,7 +219,16 @@ function processImage(
             once: true,
         });
 
-        worker.onmessage = (event: MessageEvent<WorkerResult>) => {
+        worker.onmessage = (event: MessageEvent<WorkerMessage>) => {
+            if (event.data.type === 'status') {
+                emitStatus(onStatus, {
+                    stage: event.data.stage,
+                    progress: event.data.progress,
+                });
+
+                return;
+            }
+
             signal?.removeEventListener('abort', handleAbort);
             worker.terminate();
             resolve(event.data);
@@ -215,4 +260,11 @@ function processImage(
             [buffer],
         );
     });
+}
+
+function emitStatus(
+    onStatus: ((status: ImageProcessingStatus) => void) | undefined,
+    status: ImageProcessingStatus,
+): void {
+    onStatus?.(status);
 }

@@ -7,5 +7,7 @@ export type {
     ImageOptimizationOptions,
     ImageOptimizationResult,
     ImageOptimizationSkipReason,
+    ImageProcessingStage,
+    ImageProcessingStatus,
     ImageResizeOptions,
 } from './types';
