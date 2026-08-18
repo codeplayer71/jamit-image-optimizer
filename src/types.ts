@@ -1,5 +1,7 @@
 export type ImageOptimizationResult = {
     file: File;
+    optimized: boolean;
+    reason?: ImageOptimizationSkipReason;
 
     original: {
         name: string;
@@ -29,3 +31,10 @@ export type ImageOptimizationResult = {
         encodeMs: number;
     };
 };
+
+export type ImageOptimizationOptions = {
+    quality?: number;
+};
+
+export type ImageOptimizationSkipReason =
+    | 'output-larger-than-input';
