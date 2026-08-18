@@ -83,6 +83,17 @@ fileInput.addEventListener('change', async () => {
                     kind: item.kind,
                     outcome: item.outcome,
                     reason: item.reason ?? null,
+                    ...(item.optimization && {
+                        original: item.optimization.original,
+                        output: item.optimization.output,
+                        compression: item.optimization.compression,
+                        timing: {
+                            totalMs: Math.round(item.optimization.timing.totalMs),
+                            decodeMs: Math.round(item.optimization.timing.decodeMs),
+                            resizeMs: Math.round(item.optimization.timing.resizeMs),
+                            encodeMs: Math.round(item.optimization.timing.encodeMs),
+                        },
+                    }),
                 })),
                 summary: {
                     ...result.summary,

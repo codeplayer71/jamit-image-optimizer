@@ -52,7 +52,7 @@ export type ImageOptimizationResult = {
     };
 
     compression: {
-        quality: number;
+        quality?: number;
         encodeAttempts: number;
         targetSize?: number;
         targetReached?: boolean;

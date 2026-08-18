@@ -51,11 +51,11 @@ describe('processFiles', () => {
             },
         );
 
-        const png = new File(
+        const webp = new File(
             [new Uint8Array(2)],
-            'floorplan.png',
+            'floorplan.webp',
             {
-                type: 'image/png',
+                type: 'image/webp',
             },
         );
 
@@ -67,7 +67,7 @@ describe('processFiles', () => {
             },
         );
 
-        const input = [jpeg, pdf, png, text];
+        const input = [jpeg, pdf, webp, text];
 
         const result = await processFiles(input);
 
@@ -75,7 +75,7 @@ describe('processFiles', () => {
 
         expect(result.files[0]).not.toBe(jpeg);
         expect(result.files[1]).toBe(pdf);
-        expect(result.files[2]).toBe(png);
+        expect(result.files[2]).toBe(webp);
         expect(result.files[3]).toBe(text);
 
         expect(result.items.map((item) => item.index)).toEqual([
@@ -395,5 +395,47 @@ describe('processFiles', () => {
 
         expect(createdWorkers).toBe(2);
         expect(terminate).toHaveBeenCalledTimes(2);
+    });
+
+    it('treats content-level unsupported images as unchanged', async () => {
+        vi.stubGlobal(
+            'Worker',
+            class {
+                onmessage: ((event: MessageEvent) => void) | null = null;
+                onerror: ((event: ErrorEvent) => void) | null = null;
+
+                postMessage(): void {
+                    this.onmessage?.({
+                        data: {
+                            type: 'error',
+                            code: 'unsupported-format',
+                            message: 'Animated PNG images are not supported.',
+                        },
+                    } as MessageEvent);
+                }
+
+                terminate(): void {}
+            },
+        );
+
+        const png = new File(
+            [new Uint8Array(4)],
+            'animated.png',
+            {
+                type: 'image/png',
+            },
+        );
+
+        const result = await processFiles([png]);
+
+        expect(result.files[0]).toBe(png);
+
+        expect(result.items[0]).toMatchObject({
+            kind: 'image',
+            outcome: 'unchanged',
+            reason: 'unsupported-image-format',
+        });
+
+        expect(result.summary.failedOptimizations).toBe(0);
     });
 });

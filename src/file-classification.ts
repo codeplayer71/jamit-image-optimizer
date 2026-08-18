@@ -1,18 +1,23 @@
+import { getImageFormat } from './image-format';
+
 export type FileClassification =
     | 'supported-image'
     | 'unsupported-image'
     | 'passthrough';
 
-const SUPPORTED_IMAGE_TYPES = new Set([
-    'image/jpeg',
+const SUPPORTED_PROCESSING_FORMATS = new Set([
+    'jpeg',
+    'png',
 ]);
 
 export function classifyFile(file: File): FileClassification {
-    if (SUPPORTED_IMAGE_TYPES.has(file.type)) {
+    const format = getImageFormat(file);
+
+    if (format && SUPPORTED_PROCESSING_FORMATS.has(format)) {
         return 'supported-image';
     }
 
-    if (file.type.startsWith('image/')) {
+    if (format || file.type.startsWith('image/')) {
         return 'unsupported-image';
     }
 

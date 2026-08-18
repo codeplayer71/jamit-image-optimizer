@@ -104,6 +104,17 @@ export async function processFiles(
                     throw error;
                 }
 
+                if (error.code === 'unsupported-format') {
+                    return {
+                        index,
+                        originalFile: file,
+                        file,
+                        kind: 'image',
+                        outcome: 'unchanged',
+                        reason: 'unsupported-image-format',
+                    } satisfies FileProcessingItemResult;
+                }
+
                 return {
                     index,
                     originalFile: file,

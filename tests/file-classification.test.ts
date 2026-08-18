@@ -12,7 +12,6 @@ describe('classifyFile', () => {
     });
 
     it.each([
-        'image/png',
         'image/webp',
         'image/heic',
         'image/heif',
@@ -42,5 +41,13 @@ describe('classifyFile', () => {
         const file = new File([], 'unknown');
 
         expect(classifyFile(file)).toBe('passthrough');
+    });
+
+    it('classifies PNG as a supported image', () => {
+        const file = new File([], 'photo.png', {
+            type: 'image/png',
+        });
+
+        expect(classifyFile(file)).toBe('supported-image');
     });
 });

@@ -32,7 +32,7 @@ describe('optimizeImage options', () => {
     it('rejects unsupported image formats', async () => {
         const promise = optimizeImage(
             {
-                type: 'image/png',
+                type: 'image/gif',
             } as File,
         );
 

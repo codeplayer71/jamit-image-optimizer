@@ -320,4 +320,64 @@ describe('optimizeImage result', () => {
             targetReached: true,
         });
     });
+
+    it('returns a PNG result without JPEG-specific quality metadata', async () => {
+        vi.stubGlobal(
+            'Worker',
+            class extends WorkerMock {
+                override postMessage(): void {
+                    this.onmessage?.({
+                        data: {
+                            type: 'result',
+                            buffer: new ArrayBuffer(2),
+                            originalWidth: 200,
+                            originalHeight: 100,
+                            outputWidth: 100,
+                            outputHeight: 50,
+                            decodeMs: 10,
+                            resizeMs: 5,
+                            encodeMs: 20,
+                            encodeAttempts: 1,
+                        },
+                    } as MessageEvent);
+                }
+            },
+        );
+
+        const file = new File(
+            [new Uint8Array(4)],
+            'image.png',
+            {
+                type: 'image/png',
+                lastModified: 123,
+            },
+        );
+
+        const result = await optimizeImage(file, {
+            quality: 0.8,
+            targetSize: 500_000,
+            minQuality: 0.5,
+            resize: {
+                maxWidth: 100,
+            },
+        });
+
+        expect(result.optimized).toBe(true);
+
+        expect(result.file.name).toBe('image.png');
+        expect(result.file.type).toBe('image/png');
+        expect(result.file.lastModified).toBe(123);
+
+        expect(result.output).toEqual({
+            name: 'image.png',
+            type: 'image/png',
+            size: 2,
+            width: 100,
+            height: 50,
+        });
+
+        expect(result.compression).toEqual({
+            encodeAttempts: 1,
+        });
+    });
 });

@@ -1,4 +1,8 @@
 import { ImageOptimizerError } from './errors';
+import {
+    getImageFormat,
+    type ImageFormat,
+} from './image-format';
 import type {
     ImageOptimizationOptions,
     ImageOptimizationResult,
@@ -16,7 +20,7 @@ type WorkerResult = {
     decodeMs: number;
     resizeMs: number;
     encodeMs: number;
-    finalQuality: number;
+    finalQuality?: number;
     encodeAttempts: number;
     targetReached?: boolean;
 };
@@ -27,7 +31,16 @@ type WorkerStatus = {
     progress: null;
 };
 
-type WorkerMessage = WorkerResult | WorkerStatus;
+type WorkerError = {
+    type: 'error';
+    code: 'unsupported-format' | 'worker-failed';
+    message: string;
+};
+
+type WorkerMessage =
+    | WorkerResult
+    | WorkerStatus
+    | WorkerError;
 
 const DEFAULT_QUALITY = 0.8;
 
@@ -94,7 +107,9 @@ export async function optimizeImage(
         );
     }
 
-    if (file.type !== 'image/jpeg') {
+    const format = getImageFormat(file);
+
+    if (format !== 'jpeg' && format !== 'png') {
         throw new ImageOptimizerError(
             'unsupported-format',
             `Unsupported image format: ${file.type || 'unknown'}.`,
@@ -117,6 +132,7 @@ export async function optimizeImage(
     const inputBuffer = await file.arrayBuffer();
 
     const workerResult = await processImage(
+        format,
         inputBuffer,
         quality,
         options.resize,
@@ -132,7 +148,7 @@ export async function optimizeImage(
     });
 
     const outputFile = new File([workerResult.buffer], file.name, {
-        type: 'image/jpeg',
+        type: file.type,
         lastModified: file.lastModified,
     });
 
@@ -157,16 +173,10 @@ export async function optimizeImage(
                 width: workerResult.originalWidth,
                 height: workerResult.originalHeight,
             },
-            compression: {
-                quality: workerResult.finalQuality / 100,
-                encodeAttempts: workerResult.encodeAttempts,
-                ...(options.targetSize !== undefined && {
-                    targetSize: options.targetSize,
-                }),
-                ...(workerResult.targetReached !== undefined && {
-                    targetReached: workerResult.targetReached,
-                }),
-            },
+            compression: createCompressionResult(
+                workerResult,
+                options,
+            ),
             savings: {
                 bytes: 0,
                 ratio: 1,
@@ -208,16 +218,10 @@ export async function optimizeImage(
             width: workerResult.outputWidth,
             height: workerResult.outputHeight,
         },
-        compression: {
-            quality: workerResult.finalQuality / 100,
-            encodeAttempts: workerResult.encodeAttempts,
-            ...(options.targetSize !== undefined && {
-                targetSize: options.targetSize,
-            }),
-            ...(workerResult.targetReached !== undefined && {
-                targetReached: workerResult.targetReached,
-            }),
-        },
+        compression: createCompressionResult(
+            workerResult,
+            options,
+        ),
         savings: {
             bytes: savedBytes,
             ratio,
@@ -240,6 +244,7 @@ export async function optimizeImage(
 }
 
 function processImage(
+    format: ImageFormat,
     buffer: ArrayBuffer,
     quality: number,
     resize?: ImageResizeOptions,
@@ -249,12 +254,7 @@ function processImage(
     onStatus?: (status: ImageProcessingStatus) => void,
 ): Promise<WorkerResult> {
     return new Promise((resolve, reject) => {
-        const worker = new Worker(
-            new URL('./jpeg-worker.ts', import.meta.url),
-            {
-                type: 'module',
-            },
-        );
+        const worker = createWorker(format);
 
         const handleAbort = () => {
             worker.terminate();
@@ -287,6 +287,20 @@ function processImage(
                 return;
             }
 
+            if (event.data.type === 'error') {
+                signal?.removeEventListener('abort', handleAbort);
+                worker.terminate();
+
+                reject(
+                    new ImageOptimizerError(
+                        event.data.code,
+                        event.data.message,
+                    ),
+                );
+
+                return;
+            }
+
             signal?.removeEventListener('abort', handleAbort);
             worker.terminate();
             resolve(event.data);
@@ -307,12 +321,14 @@ function processImage(
         worker.postMessage(
             {
                 buffer,
-                quality: quality * 100,
-                ...(targetSize !== undefined && {
-                    targetSize,
-                }),
-                ...(minQuality !== undefined && {
-                    minQuality: minQuality * 100,
+                ...(format === 'jpeg' && {
+                    quality: quality * 100,
+                    ...(targetSize !== undefined && {
+                        targetSize,
+                    }),
+                    ...(minQuality !== undefined && {
+                        minQuality: minQuality * 100,
+                    }),
                 }),
                 ...(resize?.maxWidth !== undefined && {
                     maxWidth: resize.maxWidth,
@@ -324,6 +340,51 @@ function processImage(
             [buffer],
         );
     });
+}
+
+function createWorker(format: ImageFormat): Worker {
+    switch (format) {
+        case 'jpeg':
+            return new Worker(
+                new URL('./jpeg-worker.ts', import.meta.url),
+                {
+                    type: 'module',
+                },
+            );
+
+        case 'png':
+            return new Worker(
+                new URL('./png-worker.ts', import.meta.url),
+                {
+                    type: 'module',
+                },
+            );
+
+        default:
+            throw new ImageOptimizerError(
+                'unsupported-format',
+                `Unsupported image format: ${format}.`,
+            );
+    }
+}
+
+function createCompressionResult(
+    workerResult: WorkerResult,
+    options: ImageOptimizationOptions,
+): ImageOptimizationResult['compression'] {
+    return {
+        ...(workerResult.finalQuality !== undefined && {
+            quality: workerResult.finalQuality / 100,
+        }),
+        encodeAttempts: workerResult.encodeAttempts,
+        ...(
+            options.targetSize !== undefined &&
+            workerResult.targetReached !== undefined && {
+                targetSize: options.targetSize,
+                targetReached: workerResult.targetReached,
+            }
+        ),
+    };
 }
 
 function emitStatus(
