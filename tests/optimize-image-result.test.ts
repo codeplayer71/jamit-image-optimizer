@@ -496,4 +496,63 @@ describe('optimizeImage result', () => {
             size: 8,
         });
     });
+
+    it('converts PNG to JPEG when JPEG output is requested', async () => {
+        vi.stubGlobal(
+            'Worker',
+            class extends WorkerMock {
+                override postMessage(): void {
+                    this.onmessage?.({
+                        data: {
+                            type: 'result',
+                            buffer: new ArrayBuffer(2),
+                            originalWidth: 200,
+                            originalHeight: 100,
+                            outputWidth: 100,
+                            outputHeight: 50,
+                            decodeMs: 10,
+                            resizeMs: 5,
+                            encodeMs: 20,
+                            finalQuality: 80,
+                            encodeAttempts: 1,
+                        },
+                    } as MessageEvent);
+                }
+            },
+        );
+
+        const file = new File(
+            [new Uint8Array(4)],
+            'photo.png',
+            {
+                type: 'image/png',
+                lastModified: 123,
+            },
+        );
+
+        const result = await optimizeImage(file, {
+            mode: 'format',
+            format: 'jpeg',
+            quality: 0.8,
+        });
+
+        expect(result.optimized).toBe(true);
+
+        expect(result.file.name).toBe('photo.jpg');
+        expect(result.file.type).toBe('image/jpeg');
+        expect(result.file.lastModified).toBe(123);
+
+        expect(result.output).toMatchObject({
+            name: 'photo.jpg',
+            type: 'image/jpeg',
+            size: 2,
+            width: 100,
+            height: 50,
+        });
+
+        expect(result.compression).toEqual({
+            quality: 0.8,
+            encodeAttempts: 1,
+        });
+    });
 });

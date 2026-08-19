@@ -10,11 +10,12 @@ import {
     encodeImage,
 } from './image-encoder';
 import {
+    ImageOptimizerError,
     isImageOptimizerError,
 } from './errors';
 import { calculateResizeDimensions } from './resize';
+import { hasTransparency } from './image-alpha';
 import type { ImageOutputFormat } from './types';
-
 type ProcessImageMessage = {
     buffer: ArrayBuffer;
     inputFormat: DecodableImageFormat;
@@ -89,6 +90,16 @@ self.onmessage = async (
 
             resizeMs =
                 performance.now() - resizeStartedAt;
+        }
+
+        if (
+            event.data.outputFormat === 'jpeg' &&
+            hasTransparency(outputImageData)
+        ) {
+            throw new ImageOptimizerError(
+                'transparency-not-supported',
+                'JPEG output cannot preserve image transparency.',
+            );
         }
 
         postStatus('encoding');

@@ -489,4 +489,49 @@ describe('processFiles', () => {
             failedOptimizations: 0,
         });
     });
+
+    it('passes a transparent image through unchanged when JPEG output is requested', async () => {
+        vi.stubGlobal(
+            'Worker',
+            class {
+                onmessage: ((event: MessageEvent) => void) | null = null;
+                onerror: ((event: ErrorEvent) => void) | null = null;
+
+                postMessage(): void {
+                    this.onmessage?.({
+                        data: {
+                            type: 'error',
+                            code: 'transparency-not-supported',
+                            message: 'JPEG output cannot preserve image transparency.',
+                        },
+                    } as MessageEvent);
+                }
+
+                terminate(): void {}
+            },
+        );
+
+        const png = new File(
+            [new Uint8Array(4)],
+            'logo.png',
+            {
+                type: 'image/png',
+            },
+        );
+
+        const result = await processFiles([png], {
+            mode: 'format',
+            format: 'jpeg',
+        });
+
+        expect(result.files[0]).toBe(png);
+
+        expect(result.items[0]).toMatchObject({
+            kind: 'image',
+            outcome: 'unchanged',
+            reason: 'transparency-not-supported',
+        });
+
+        expect(result.summary.failedOptimizations).toBe(0);
+    });
 });

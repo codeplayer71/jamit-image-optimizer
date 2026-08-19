@@ -1,6 +1,7 @@
 export type ImageOptimizerErrorCode =
     | 'unsupported-format'
     | 'codec-not-supported'
+    | 'transparency-not-supported'
     | 'invalid-options'
     | 'browser-not-supported'
     | 'worker-failed'

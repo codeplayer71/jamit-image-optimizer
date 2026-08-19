@@ -126,6 +126,17 @@ export async function processFiles(
                     };
                 }
 
+                if (error.code === 'transparency-not-supported') {
+                    return {
+                        index,
+                        originalFile: file,
+                        file,
+                        kind: 'image',
+                        outcome: 'unchanged',
+                        reason: 'transparency-not-supported',
+                    };
+                }
+
                 return {
                     index,
                     originalFile: file,

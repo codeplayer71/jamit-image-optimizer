@@ -42,6 +42,7 @@ type WorkerError = {
     code:
         | 'unsupported-format'
         | 'codec-not-supported'
+        | 'transparency-not-supported'
         | 'worker-failed';
     message: string;
 };
@@ -223,7 +224,8 @@ export async function optimizeImage(
 
     if (
         outputFormat !== inputFormat &&
-        outputFormat !== 'webp'
+        outputFormat !== 'webp' &&
+        outputFormat !== 'jpeg'
     ) {
         throw new ImageOptimizerError(
             'unsupported-format',
