@@ -445,4 +445,55 @@ describe('optimizeImage result', () => {
             targetReached: true,
         });
     });
+
+    it('keeps the requested WebP format even when conversion increases file size', async () => {
+        vi.stubGlobal(
+            'Worker',
+            class extends WorkerMock {
+                override postMessage(): void {
+                    this.onmessage?.({
+                        data: {
+                            type: 'result',
+                            buffer: new ArrayBuffer(8),
+                            originalWidth: 200,
+                            originalHeight: 100,
+                            outputWidth: 200,
+                            outputHeight: 100,
+                            decodeMs: 10,
+                            resizeMs: 0,
+                            encodeMs: 20,
+                            finalQuality: 80,
+                            encodeAttempts: 1,
+                        },
+                    } as MessageEvent);
+                }
+            },
+        );
+
+        const file = new File(
+            [new Uint8Array(4)],
+            'photo.jpg',
+            {
+                type: 'image/jpeg',
+                lastModified: 123,
+            },
+        );
+
+        const result = await optimizeImage(file, {
+            mode: 'format',
+            format: 'webp',
+            quality: 0.8,
+        });
+
+        expect(result.file).not.toBe(file);
+        expect(result.file.name).toBe('photo.webp');
+        expect(result.file.type).toBe('image/webp');
+        expect(result.file.size).toBe(8);
+
+        expect(result.output).toMatchObject({
+            name: 'photo.webp',
+            type: 'image/webp',
+            size: 8,
+        });
+    });
 });

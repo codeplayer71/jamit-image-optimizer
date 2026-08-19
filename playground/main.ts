@@ -59,6 +59,8 @@ fileInput.addEventListener('change', async () => {
         );
 
         const result = await processFiles(selectedFiles, {
+            mode: 'format',
+            format: 'webp',
             quality: 0.85,
             targetSize: 500_000,
             minQuality: 0.5,

@@ -221,7 +221,10 @@ export async function optimizeImage(
         );
     }
 
-    if (outputFormat !== inputFormat) {
+    if (
+        outputFormat !== inputFormat &&
+        outputFormat !== 'webp'
+    ) {
         throw new ImageOptimizerError(
             'unsupported-format',
             `Conversion from "${inputFormat}" to "${outputFormat}" is not implemented yet.`,
@@ -282,10 +285,11 @@ export async function optimizeImage(
         },
     );
 
-    const outputIsLarger =
+    const shouldKeepOriginal =
+        mode === 'original' &&
         outputFile.size >= file.size;
 
-    if (outputIsLarger) {
+    if (shouldKeepOriginal) {
         const result: ImageOptimizationResult = {
             file,
             optimized: false,
