@@ -304,6 +304,8 @@ describe('processFiles', () => {
         0,
         -1,
         1.5,
+        5,
+        100,
         Number.NaN,
         Number.POSITIVE_INFINITY,
     ])(
@@ -895,5 +897,16 @@ describe('processFiles', () => {
             unchangedFiles: 0,
             failedOptimizations: 0,
         });
+    });
+
+    it('allows the maximum concurrency value', async () => {
+        const result = await processFiles(
+            [],
+            {
+                concurrency: 4,
+            },
+        );
+
+        expect(result.summary.totalFiles).toBe(0);
     });
 });

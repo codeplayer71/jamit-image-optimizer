@@ -17,6 +17,8 @@ type ImageJob = {
     file: File;
 };
 
+const MAX_CONCURRENCY = 4;
+
 export async function processFiles(
     files: readonly File[] | FileList,
     options: ProcessFilesOptions = {},
@@ -27,11 +29,12 @@ export async function processFiles(
 
     if (
         !Number.isSafeInteger(concurrency) ||
-        concurrency <= 0
+        concurrency <= 0 ||
+        concurrency > MAX_CONCURRENCY
     ) {
         throw new ImageOptimizerError(
             'invalid-options',
-            'concurrency must be a positive integer.',
+            `concurrency must be an integer between 1 and ${MAX_CONCURRENCY}.`,
         );
     }
 
