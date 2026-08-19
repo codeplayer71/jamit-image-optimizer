@@ -622,4 +622,69 @@ describe('optimizeImage result', () => {
             encodeAttempts: 1,
         });
     });
+
+    it('passes HEIC through the worker when an output format is requested', async () => {
+        let postedMessage: unknown;
+
+        vi.stubGlobal(
+            'Worker',
+            class {
+                onmessage:
+                    | ((event: MessageEvent) => void)
+                    | null = null;
+
+                onerror:
+                    | ((event: ErrorEvent) => void)
+                    | null = null;
+
+                postMessage(message: unknown): void {
+                    postedMessage = message;
+
+                    this.onmessage?.({
+                        data: {
+                            type: 'result',
+                            buffer: new ArrayBuffer(2),
+                            originalWidth: 200,
+                            originalHeight: 100,
+                            outputWidth: 200,
+                            outputHeight: 100,
+                            decodeMs: 10,
+                            resizeMs: 0,
+                            encodeMs: 20,
+                            finalQuality: 80,
+                            encodeAttempts: 1,
+                        },
+                    } as MessageEvent);
+                }
+
+                terminate(): void {}
+            },
+        );
+
+        const file = new File(
+            [new Uint8Array(4)],
+            'photo.heic',
+            {
+                type: 'image/heic',
+                lastModified: 123,
+            },
+        );
+
+        const result = await optimizeImage(file, {
+            mode: 'format',
+            format: 'webp',
+            quality: 0.8,
+        });
+
+        expect(postedMessage).toMatchObject({
+            inputFormat: 'heic',
+            outputFormat: 'webp',
+        });
+
+        expect(result.file.name).toBe('photo.webp');
+        expect(result.file.type).toBe('image/webp');
+
+        expect(result.converted).toBe(true);
+        expect(result.changed).toBe(true);
+    });
 });

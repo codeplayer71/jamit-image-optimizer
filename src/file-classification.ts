@@ -9,6 +9,8 @@ const SUPPORTED_PROCESSING_FORMATS = new Set([
     'jpeg',
     'png',
     'webp',
+    'heic',
+    'heif',
 ]);
 
 export function classifyFile(file: File): FileClassification {

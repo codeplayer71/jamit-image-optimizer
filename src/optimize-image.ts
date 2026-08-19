@@ -212,17 +212,6 @@ export async function optimizeImage(
         );
     }
 
-    if (
-        inputFormat !== 'jpeg' &&
-        inputFormat !== 'png' &&
-        inputFormat !== 'webp'
-    ) {
-        throw new ImageOptimizerError(
-            'unsupported-format',
-            `Input format "${inputFormat}" is not yet connected to the optimizer.`,
-        );
-    }
-
     if (typeof Worker === 'undefined') {
         throw new ImageOptimizerError(
             'browser-not-supported',

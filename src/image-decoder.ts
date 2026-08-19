@@ -1,16 +1,17 @@
-import { decode as decodeJpeg } from '@jsquash/jpeg';
-import { decode as decodePng } from '@jsquash/png';
-import { decode as decodeWebP } from '@jsquash/webp';
+import decodeJpeg from '@jsquash/jpeg/decode.js';
+import decodePng from '@jsquash/png/decode.js';
+import decodeWebP from '@jsquash/webp/decode.js';
 
 import { ImageOptimizerError } from './errors';
+import {
+    tryDecodeHeicNative,
+    type HeicMimeType,
+} from './heic-native';
 import type { ImageFormat } from './image-format';
 import { isAnimatedPng } from './png';
 import { isAnimatedWebP } from './webp';
 
-export type DecodableImageFormat = Extract<
-    ImageFormat,
-    'jpeg' | 'png' | 'webp'
->;
+export type DecodableImageFormat = ImageFormat;
 
 export async function decodeImage(
     buffer: ArrayBuffer,
@@ -39,5 +40,36 @@ export async function decodeImage(
             }
 
             return decodeWebP(buffer);
+
+        case 'heic':
+            return decodeHeicNative(
+                buffer,
+                'image/heic',
+            );
+
+        case 'heif':
+            return decodeHeicNative(
+                buffer,
+                'image/heif',
+            );
     }
+}
+
+async function decodeHeicNative(
+    buffer: ArrayBuffer,
+    mimeType: HeicMimeType,
+): Promise<ImageData> {
+    const imageData = await tryDecodeHeicNative(
+        buffer,
+        mimeType,
+    );
+
+    if (!imageData) {
+        throw new ImageOptimizerError(
+            'codec-not-supported',
+            `Native decoding for "${mimeType}" is not supported by this browser.`,
+        );
+    }
+
+    return imageData;
 }

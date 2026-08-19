@@ -7,16 +7,16 @@ import {
     vi,
 } from 'vitest';
 
-vi.mock('@jsquash/jpeg', () => ({
-    decode: vi.fn(),
+vi.mock('@jsquash/jpeg/decode.js', () => ({
+    default: vi.fn(),
 }));
 
-vi.mock('@jsquash/png', () => ({
-    decode: vi.fn(),
+vi.mock('@jsquash/png/decode.js', () => ({
+    default: vi.fn(),
 }));
 
-vi.mock('@jsquash/webp', () => ({
-    decode: vi.fn(),
+vi.mock('@jsquash/webp/decode.js', () => ({
+    default: vi.fn(),
 }));
 
 vi.mock('../src/png', () => ({
@@ -27,16 +27,15 @@ vi.mock('../src/webp', () => ({
     isAnimatedWebP: vi.fn(),
 }));
 
-import {
-    decode as decodeJpeg,
-} from '@jsquash/jpeg';
-import {
-    decode as decodePng,
-} from '@jsquash/png';
-import {
-    decode as decodeWebP,
-} from '@jsquash/webp';
+vi.mock('../src/heic-native', () => ({
+    tryDecodeHeicNative: vi.fn(),
+}));
 
+import decodeJpeg from '@jsquash/jpeg/decode.js';
+import decodePng from '@jsquash/png/decode.js';
+import decodeWebP from '@jsquash/webp/decode.js';
+
+import { tryDecodeHeicNative } from '../src/heic-native';
 import { decodeImage } from '../src/image-decoder';
 import { isAnimatedPng } from '../src/png';
 import { isAnimatedWebP } from '../src/webp';
@@ -138,5 +137,43 @@ describe('decodeImage', () => {
         });
 
         expect(decodeWebP).not.toHaveBeenCalled();
+    });
+
+    it('decodes HEIC through the native decoder', async () => {
+        vi.mocked(
+            tryDecodeHeicNative,
+        ).mockResolvedValue(imageData);
+
+        const buffer = new ArrayBuffer(4);
+
+        await expect(
+            decodeImage(
+                buffer,
+                'heic',
+            ),
+        ).resolves.toBe(imageData);
+
+        expect(
+            tryDecodeHeicNative,
+        ).toHaveBeenCalledWith(
+            buffer,
+            'image/heic',
+        );
+    });
+
+    it('throws codec-not-supported when HEIC cannot be decoded natively', async () => {
+        vi.mocked(
+            tryDecodeHeicNative,
+        ).mockResolvedValue(null);
+
+        await expect(
+            decodeImage(
+                new ArrayBuffer(4),
+                'heic',
+            ),
+        ).rejects.toMatchObject({
+            name: 'ImageOptimizerError',
+            code: 'codec-not-supported',
+        });
     });
 });
