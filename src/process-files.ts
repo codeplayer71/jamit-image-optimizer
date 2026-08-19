@@ -5,6 +5,7 @@ import {
 } from './errors';
 import { classifyFile } from './file-classification';
 import { optimizeImage } from './optimize-image';
+import { calculateSizeMetrics } from './size-metrics';
 import type {
     FileProcessingBatchResult,
     FileProcessingItemResult,
@@ -176,7 +177,10 @@ export async function processFiles(
         0,
     );
 
-    const savedBytes = originalBytes - outputBytes;
+    const sizeMetrics = calculateSizeMetrics(
+        originalBytes,
+        outputBytes,
+    );
 
     return {
         files: resultFiles,
@@ -197,11 +201,8 @@ export async function processFiles(
             ).length,
             originalBytes,
             outputBytes,
-            savedBytes,
-            savedPercent:
-                originalBytes > 0
-                    ? (savedBytes / originalBytes) * 100
-                    : 0,
+            savings: sizeMetrics.savings,
+            sizeChange: sizeMetrics.sizeChange,
         },
     };
 }

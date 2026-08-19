@@ -106,8 +106,16 @@ describe('processFiles', () => {
             failedOptimizations: 0,
             originalBytes: 10,
             outputBytes: 8,
-            savedBytes: 2,
-            savedPercent: 20,
+            savings: {
+                bytes: 2,
+                ratio: 0.2,
+                percent: 20,
+            },
+            sizeChange: {
+                bytes: -2,
+                ratio: -0.2,
+                percent: -20,
+            },
         });
     });
 

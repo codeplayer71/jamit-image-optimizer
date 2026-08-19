@@ -8,6 +8,7 @@ import {
     getOutputMimeType,
 } from './output-file';
 import { resolveOutputFormat } from './output-format';
+import { calculateSizeMetrics } from './size-metrics';
 import type {
     ImageOptimizationOptions,
     ImageOptimizationResult,
@@ -222,17 +223,6 @@ export async function optimizeImage(
         );
     }
 
-    if (
-        outputFormat !== inputFormat &&
-        outputFormat !== 'webp' &&
-        outputFormat !== 'jpeg'
-    ) {
-        throw new ImageOptimizerError(
-            'unsupported-format',
-            `Conversion from "${inputFormat}" to "${outputFormat}" is not implemented yet.`,
-        );
-    }
-
     if (typeof Worker === 'undefined') {
         throw new ImageOptimizerError(
             'browser-not-supported',
@@ -292,6 +282,11 @@ export async function optimizeImage(
         outputFile.size >= file.size;
 
     if (shouldKeepOriginal) {
+        const sizeMetrics = calculateSizeMetrics(
+            file.size,
+            file.size,
+        );
+
         const result: ImageOptimizationResult = {
             file,
             optimized: false,
@@ -314,11 +309,8 @@ export async function optimizeImage(
                 workerResult,
                 options,
             ),
-            savings: {
-                bytes: 0,
-                ratio: 1,
-                percent: 0,
-            },
+            savings: sizeMetrics.savings,
+            sizeChange: sizeMetrics.sizeChange,
             timing: {
                 totalMs:
                     performance.now() -
@@ -337,11 +329,10 @@ export async function optimizeImage(
         return result;
     }
 
-    const savedBytes =
-        file.size - outputFile.size;
-
-    const ratio =
-        outputFile.size / file.size;
+    const sizeMetrics = calculateSizeMetrics(
+        file.size,
+        outputFile.size,
+    );
 
     const result: ImageOptimizationResult = {
         file: outputFile,
@@ -364,11 +355,8 @@ export async function optimizeImage(
             workerResult,
             options,
         ),
-        savings: {
-            bytes: savedBytes,
-            ratio,
-            percent: (1 - ratio) * 100,
-        },
+        savings: sizeMetrics.savings,
+        sizeChange: sizeMetrics.sizeChange,
         timing: {
             totalMs:
                 performance.now() -

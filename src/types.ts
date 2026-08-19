@@ -1,4 +1,8 @@
 import type { ImageOptimizerError } from './errors';
+import type {
+    SizeChange,
+    SizeSavings,
+} from './size-metrics';
 
 export type ImageResizeOptions = {
     maxWidth?: number;
@@ -60,11 +64,8 @@ export type ImageOptimizationResult = {
         targetReached?: boolean;
     };
 
-    savings: {
-        bytes: number;
-        ratio: number;
-        percent: number;
-    };
+    savings: SizeSavings;
+    sizeChange: SizeChange;
 
     timing: {
         totalMs: number;
@@ -102,8 +103,8 @@ export type FileProcessingBatchSummary = {
     failedOptimizations: number;
     originalBytes: number;
     outputBytes: number;
-    savedBytes: number;
-    savedPercent: number;
+    savings: SizeSavings;
+    sizeChange: SizeChange;
 };
 
 export type FileProcessingBatchResult = {

@@ -68,9 +68,17 @@ describe('optimizeImage result', () => {
             height: 100,
         });
 
-        expect(result.savings.bytes).toBe(0);
-        expect(result.savings.ratio).toBe(1);
-        expect(result.savings.percent).toBe(0);
+        expect(result.savings).toEqual({
+            bytes: 0,
+            ratio: 0,
+            percent: 0,
+        });
+
+        expect(result.sizeChange).toEqual({
+            bytes: 0,
+            ratio: 0,
+            percent: 0,
+        });
     });
 
     it('returns the optimized file when the encoded output is smaller', async () => {
@@ -552,6 +560,63 @@ describe('optimizeImage result', () => {
 
         expect(result.compression).toEqual({
             quality: 0.8,
+            encodeAttempts: 1,
+        });
+    });
+
+    it('converts JPEG to PNG when PNG output is requested', async () => {
+        vi.stubGlobal(
+            'Worker',
+            class extends WorkerMock {
+                override postMessage(): void {
+                    this.onmessage?.({
+                        data: {
+                            type: 'result',
+                            buffer: new ArrayBuffer(8),
+                            originalWidth: 200,
+                            originalHeight: 100,
+                            outputWidth: 200,
+                            outputHeight: 100,
+                            decodeMs: 10,
+                            resizeMs: 0,
+                            encodeMs: 20,
+                            encodeAttempts: 1,
+                        },
+                    } as MessageEvent);
+                }
+            },
+        );
+
+        const file = new File(
+            [new Uint8Array(4)],
+            'photo.jpg',
+            {
+                type: 'image/jpeg',
+                lastModified: 123,
+            },
+        );
+
+        const result = await optimizeImage(file, {
+            mode: 'format',
+            format: 'png',
+        });
+
+        expect(result.optimized).toBe(true);
+
+        expect(result.file.name).toBe('photo.png');
+        expect(result.file.type).toBe('image/png');
+        expect(result.file.size).toBe(8);
+        expect(result.file.lastModified).toBe(123);
+
+        expect(result.output).toEqual({
+            name: 'photo.png',
+            type: 'image/png',
+            size: 8,
+            width: 200,
+            height: 100,
+        });
+
+        expect(result.compression).toEqual({
             encodeAttempts: 1,
         });
     });

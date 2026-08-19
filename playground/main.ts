@@ -60,7 +60,7 @@ fileInput.addEventListener('change', async () => {
 
         const result = await processFiles(selectedFiles, {
             mode: 'format',
-            format: 'jpeg',
+            format: 'png',
             quality: 0.85,
             targetSize: 500_000,
             minQuality: 0.5,
@@ -81,11 +81,15 @@ fileInput.addEventListener('change', async () => {
         }
 
         const firstImage = result.items.find(
-            (item) => item.kind === 'image' && item.optimization,
+            (item) =>
+                item.kind === 'image' &&
+                item.optimization,
         );
 
         if (firstImage) {
-            outputUrl = URL.createObjectURL(firstImage.file);
+            outputUrl = URL.createObjectURL(
+                firstImage.file,
+            );
             outputPreview.src = outputUrl;
         } else {
             outputPreview.removeAttribute('src');
@@ -102,31 +106,74 @@ fileInput.addEventListener('change', async () => {
                     outcome: item.outcome,
                     reason: item.reason ?? null,
                     ...(item.optimization && {
-                        original: item.optimization.original,
-                        output: item.optimization.output,
-                        compression: item.optimization.compression,
+                        original:
+                        item.optimization.original,
+                        output:
+                        item.optimization.output,
+                        compression:
+                        item.optimization.compression,
+                        savings: {
+                            ...item.optimization.savings,
+                            ratio: round(
+                                item.optimization.savings
+                                    .ratio,
+                            ),
+                            percent: round(
+                                item.optimization.savings
+                                    .percent,
+                            ),
+                        },
+                        sizeChange: {
+                            ...item.optimization.sizeChange,
+                            ratio: round(
+                                item.optimization.sizeChange
+                                    .ratio,
+                            ),
+                            percent: round(
+                                item.optimization.sizeChange
+                                    .percent,
+                            ),
+                        },
                         timing: {
                             totalMs: Math.round(
-                                item.optimization.timing.totalMs,
+                                item.optimization.timing
+                                    .totalMs,
                             ),
                             decodeMs: Math.round(
-                                item.optimization.timing.decodeMs,
+                                item.optimization.timing
+                                    .decodeMs,
                             ),
                             resizeMs: Math.round(
-                                item.optimization.timing.resizeMs,
+                                item.optimization.timing
+                                    .resizeMs,
                             ),
                             encodeMs: Math.round(
-                                item.optimization.timing.encodeMs,
+                                item.optimization.timing
+                                    .encodeMs,
                             ),
                         },
                     }),
                 })),
                 summary: {
                     ...result.summary,
-                    savedPercent:
-                        Math.round(
-                            result.summary.savedPercent * 100,
-                        ) / 100,
+                    savings: {
+                        ...result.summary.savings,
+                        ratio: round(
+                            result.summary.savings.ratio,
+                        ),
+                        percent: round(
+                            result.summary.savings.percent,
+                        ),
+                    },
+                    sizeChange: {
+                        ...result.summary.sizeChange,
+                        ratio: round(
+                            result.summary.sizeChange.ratio,
+                        ),
+                        percent: round(
+                            result.summary.sizeChange.percent,
+                        ),
+                    },
                 },
                 heicCapabilities,
             },
@@ -148,3 +195,7 @@ fileInput.addEventListener('change', async () => {
         }
     }
 });
+
+function round(value: number): number {
+    return Math.round(value * 100) / 100;
+}
