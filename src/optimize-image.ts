@@ -111,6 +111,16 @@ export async function optimizeImage(
 
     if (
         minQuality !== undefined &&
+        targetSize === undefined
+    ) {
+        throw new ImageOptimizerError(
+            'invalid-options',
+            'minQuality can only be used together with targetSize.',
+        );
+    }
+
+    if (
+        minQuality !== undefined &&
         minQuality > quality
     ) {
         throw new ImageOptimizerError(
@@ -173,21 +183,21 @@ export async function optimizeImage(
         (
             maxWidth !== undefined &&
             (
-                !Number.isFinite(maxWidth) ||
+                !Number.isSafeInteger(maxWidth) ||
                 maxWidth <= 0
             )
         ) ||
         (
             maxHeight !== undefined &&
             (
-                !Number.isFinite(maxHeight) ||
+                !Number.isSafeInteger(maxHeight) ||
                 maxHeight <= 0
             )
         )
     ) {
         throw new ImageOptimizerError(
             'invalid-options',
-            'resize dimensions must be greater than 0.',
+            'resize dimensions must be positive integers.',
         );
     }
 
@@ -262,7 +272,7 @@ export async function optimizeImage(
 
     if (!outputFormat) {
         throw new ImageOptimizerError(
-            'unsupported-format',
+            'output-format-not-supported',
             `The original format "${inputFormat}" cannot be encoded.`,
         );
     }

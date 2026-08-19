@@ -14,10 +14,12 @@ describe('optimizeImage options', () => {
     it.each([
         { maxWidth: 0 },
         { maxWidth: -1 },
+        { maxWidth: 100.5 },
         { maxWidth: Number.NaN },
         { maxWidth: Number.POSITIVE_INFINITY },
         { maxHeight: 0 },
         { maxHeight: -1 },
+        { maxHeight: 100.5 },
         { maxHeight: Number.NaN },
         { maxHeight: Number.POSITIVE_INFINITY },
     ])('rejects invalid resize options %o', async (resize) => {
@@ -132,12 +134,30 @@ describe('optimizeImage options', () => {
             } as File,
             {
                 quality: 0.7,
+                targetSize: 100_000,
                 minQuality: 0.8,
             },
         );
 
         await expect(promise).rejects.toMatchObject({
             code: 'invalid-options',
+        });
+    });
+
+    it('rejects minQuality without targetSize', async () => {
+        const promise = optimizeImage(
+            {
+                type: 'image/jpeg',
+            } as File,
+            {
+                minQuality: 0.5,
+            },
+        );
+
+        await expect(promise).rejects.toMatchObject({
+            code: 'invalid-options',
+            message:
+                'minQuality can only be used together with targetSize.',
         });
     });
 

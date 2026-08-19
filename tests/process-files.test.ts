@@ -147,7 +147,7 @@ describe('processFiles', () => {
         );
 
         expect(result.items[2]?.reason).toBe(
-            'unsupported-image-format',
+            'output-format-not-supported',
         );
 
         expect(result.items[3]?.reason).toBe(
@@ -1061,5 +1061,218 @@ describe('processFiles', () => {
             0,
             1,
         ]);
+    });
+
+    it('allows shared compression options for mixed JPEG and PNG batches', async () => {
+        vi.stubGlobal(
+            'Worker',
+            class {
+                onmessage:
+                    | ((event: MessageEvent) => void)
+                    | null = null;
+
+                onerror:
+                    | ((event: ErrorEvent) => void)
+                    | null = null;
+
+                postMessage(message: unknown): void {
+                    const {
+                        inputFormat,
+                    } = message as {
+                        inputFormat: string;
+                    };
+
+                    if (inputFormat === 'png') {
+                        this.onmessage?.({
+                            data: {
+                                type: 'result',
+                                buffer: new ArrayBuffer(2),
+                                originalWidth: 200,
+                                originalHeight: 100,
+                                outputWidth: 200,
+                                outputHeight: 100,
+                                decodeMs: 10,
+                                resizeMs: 0,
+                                encodeMs: 20,
+                                encodeAttempts: 1,
+                            },
+                        } as MessageEvent);
+
+                        return;
+                    }
+
+                    this.onmessage?.({
+                        data: {
+                            type: 'result',
+                            buffer: new ArrayBuffer(2),
+                            originalWidth: 200,
+                            originalHeight: 100,
+                            outputWidth: 200,
+                            outputHeight: 100,
+                            decodeMs: 10,
+                            resizeMs: 0,
+                            encodeMs: 40,
+                            finalQuality: 70,
+                            encodeAttempts: 3,
+                            targetReached: true,
+                        },
+                    } as MessageEvent);
+                }
+
+                terminate(): void {}
+            },
+        );
+
+        const jpeg = new File(
+            [
+                new Uint8Array([
+                    0xff,
+                    0xd8,
+                    0xff,
+                    0xe0,
+                ]),
+            ],
+            'photo.jpg',
+            {
+                type: 'image/jpeg',
+            },
+        );
+
+        const png = new File(
+            [
+                new Uint8Array([
+                    0x89,
+                    0x50,
+                    0x4e,
+                    0x47,
+                    0x0d,
+                    0x0a,
+                    0x1a,
+                    0x0a,
+                ]),
+            ],
+            'floorplan.png',
+            {
+                type: 'image/png',
+            },
+        );
+
+        const result = await processFiles(
+            [
+                jpeg,
+                png,
+            ],
+            {
+                quality: 0.8,
+                targetSize: 500_000,
+                minQuality: 0.5,
+                concurrency: 2,
+            },
+        );
+
+        expect(
+            result.items.map(
+                (item) => item.outcome,
+            ),
+        ).toEqual([
+            'optimized',
+            'optimized',
+        ]);
+
+        expect(
+            result.items[0]?.optimization?.compression,
+        ).toEqual({
+            quality: 0.7,
+            encodeAttempts: 3,
+            targetSize: 500_000,
+            targetReached: true,
+        });
+
+        expect(
+            result.items[1]?.optimization?.compression,
+        ).toEqual({
+            encodeAttempts: 1,
+        });
+
+        expect(result.summary).toMatchObject({
+            totalFiles: 2,
+            imageFiles: 2,
+            optimizedFiles: 2,
+            failedOptimizations: 0,
+        });
+    });
+
+    it('processes images sequentially by default', async () => {
+        let activeWorkers = 0;
+        let maxActiveWorkers = 0;
+
+        vi.stubGlobal(
+            'Worker',
+            class {
+                onmessage:
+                    | ((event: MessageEvent) => void)
+                    | null = null;
+
+                onerror:
+                    | ((event: ErrorEvent) => void)
+                    | null = null;
+
+                postMessage(): void {
+                    activeWorkers += 1;
+
+                    maxActiveWorkers = Math.max(
+                        maxActiveWorkers,
+                        activeWorkers,
+                    );
+
+                    setTimeout(() => {
+                        activeWorkers -= 1;
+
+                        this.onmessage?.({
+                            data: {
+                                type: 'result',
+                                buffer: new ArrayBuffer(2),
+                                originalWidth: 200,
+                                originalHeight: 100,
+                                outputWidth: 200,
+                                outputHeight: 100,
+                                decodeMs: 10,
+                                resizeMs: 0,
+                                encodeMs: 20,
+                                finalQuality: 80,
+                                encodeAttempts: 1,
+                            },
+                        } as MessageEvent);
+                    }, 10);
+                }
+
+                terminate(): void {}
+            },
+        );
+
+        const files = [
+            createTestImageFile(
+                'jpeg',
+                {
+                    name: 'first.jpg',
+                },
+            ),
+            createTestImageFile(
+                'jpeg',
+                {
+                    name: 'second.jpg',
+                },
+            ),
+            createTestImageFile(
+                'jpeg',
+                {
+                    name: 'third.jpg',
+                },
+            ),
+        ];
+
+        await processFiles(files);
+
+        expect(maxActiveWorkers).toBe(1);
     });
 });

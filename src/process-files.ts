@@ -193,6 +193,21 @@ export async function processFiles(
 
                     if (
                         error.code ===
+                        'output-format-not-supported'
+                    ) {
+                        return {
+                            index,
+                            originalFile: file,
+                            file,
+                            kind: 'image',
+                            outcome: 'unchanged',
+                            reason:
+                                'output-format-not-supported',
+                        };
+                    }
+
+                    if (
+                        error.code ===
                         'codec-not-supported'
                     ) {
                         return {

@@ -1,5 +1,6 @@
 export type ImageOptimizerErrorCode =
     | 'unsupported-format'
+    | 'output-format-not-supported'
     | 'codec-not-supported'
     | 'transparency-not-supported'
     | 'resource-limit-exceeded'

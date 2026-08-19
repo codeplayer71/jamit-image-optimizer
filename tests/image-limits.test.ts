@@ -15,16 +15,13 @@ import {
 } from '../src/image-limits';
 
 describe('image processing limits', () => {
-    it('uses the default limits', () => {
+    it('uses the documented default limits', () => {
         expect(
             resolveImageProcessingLimits(),
         ).toEqual({
-            maxInputBytes:
-            DEFAULT_MAX_INPUT_BYTES,
-            maxPixels:
-            DEFAULT_MAX_PIXELS,
-            maxDimension:
-            DEFAULT_MAX_DIMENSION,
+            maxInputBytes: 52_428_800,
+            maxPixels: 25_000_000,
+            maxDimension: 16_384,
         });
     });
 
@@ -98,14 +95,6 @@ describe('image processing limits', () => {
                 limits,
             ),
         ).toBe(true);
-    });
-
-    it('uses the default maximum dimension', () => {
-        expect(
-            resolveImageProcessingLimits(),
-        ).toMatchObject({
-            maxDimension: 16_384,
-        });
     });
 
     it('allows overriding the maximum dimension', () => {
