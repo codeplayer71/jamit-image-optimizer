@@ -909,4 +909,157 @@ describe('processFiles', () => {
 
         expect(result.summary.totalFiles).toBe(0);
     });
+
+    it('adds the correct file index and file reference to batch status updates', async () => {
+        vi.stubGlobal(
+            'Worker',
+            class {
+                onmessage:
+                    | ((event: MessageEvent) => void)
+                    | null = null;
+
+                onerror:
+                    | ((event: ErrorEvent) => void)
+                    | null = null;
+
+                postMessage(): void {
+                    this.onmessage?.({
+                        data: {
+                            type: 'status',
+                            stage: 'encoding',
+                            progress: 0.5,
+                        },
+                    } as MessageEvent);
+
+                    this.onmessage?.({
+                        data: {
+                            type: 'result',
+                            buffer: new ArrayBuffer(2),
+                            originalWidth: 200,
+                            originalHeight: 100,
+                            outputWidth: 200,
+                            outputHeight: 100,
+                            decodeMs: 10,
+                            resizeMs: 0,
+                            encodeMs: 20,
+                            finalQuality: 80,
+                            encodeAttempts: 1,
+                        },
+                    } as MessageEvent);
+                }
+
+                terminate(): void {}
+            },
+        );
+
+        const firstFile = new File(
+            [
+                new Uint8Array([
+                    0xff,
+                    0xd8,
+                    0xff,
+                    0xe0,
+                ]),
+            ],
+            'first.jpg',
+            {
+                type: 'image/jpeg',
+            },
+        );
+
+        const secondFile = new File(
+            [
+                new Uint8Array([
+                    0xff,
+                    0xd8,
+                    0xff,
+                    0xe0,
+                ]),
+            ],
+            'second.jpg',
+            {
+                type: 'image/jpeg',
+            },
+        );
+
+        const files = [
+            firstFile,
+            secondFile,
+        ];
+
+        const statuses: Array<{
+            index: number;
+            file: File;
+            stage: string;
+            progress: number | null;
+        }> = [];
+
+        await processFiles(
+            files,
+            {
+                concurrency: 2,
+                onStatus: (status) => {
+                    statuses.push(status);
+                },
+            },
+        );
+
+        expect(statuses.length).toBeGreaterThan(0);
+
+        expect(
+            statuses.every(
+                (status) =>
+                    status.file ===
+                    files[status.index],
+            ),
+        ).toBe(true);
+
+        expect(
+            [
+                ...new Set(
+                    statuses.map(
+                        (status) =>
+                            status.index,
+                    ),
+                ),
+            ].sort(),
+        ).toEqual([
+            0,
+            1,
+        ]);
+
+        expect(
+            statuses
+                .filter(
+                    (status) =>
+                        status.stage ===
+                        'completed',
+                )
+                .map(
+                    (status) =>
+                        status.index,
+                )
+                .sort(),
+        ).toEqual([
+            0,
+            1,
+        ]);
+
+        expect(
+            statuses
+                .filter(
+                    (status) =>
+                        status.stage ===
+                        'encoding',
+                )
+                .map(
+                    (status) =>
+                        status.index,
+                )
+                .sort(),
+        ).toEqual([
+            0,
+            1,
+        ]);
+    });
 });

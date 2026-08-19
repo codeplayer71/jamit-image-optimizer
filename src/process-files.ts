@@ -112,6 +112,13 @@ export async function processFiles(
         });
     }
 
+    const {
+        errorMode: _errorMode,
+        concurrency: _concurrency,
+        onStatus,
+        ...optimizationOptions
+    } = options;
+
     const processedImages =
         await mapWithConcurrency(
             imageJobs,
@@ -124,7 +131,18 @@ export async function processFiles(
                     const optimization =
                         await optimizeImage(
                             file,
-                            options,
+                            {
+                                ...optimizationOptions,
+                                ...(onStatus !== undefined && {
+                                    onStatus: (status) => {
+                                        onStatus({
+                                            ...status,
+                                            index,
+                                            file,
+                                        });
+                                    },
+                                }),
+                            },
                         );
 
                     return {
@@ -276,7 +294,8 @@ export async function processFiles(
         items: completeItems,
         summary: {
             totalFiles: inputFiles.length,
-            imageFiles: completeItems.filter(
+            imageFiles:
+            completeItems.filter(
                 (item) =>
                     item.kind === 'image',
             ).length,

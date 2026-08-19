@@ -1,4 +1,7 @@
-import type { ImageOptimizerError } from './errors';
+import type {
+    ImageOptimizerError,
+    ImageOptimizerErrorCode,
+} from './errors';
 import type {
     SizeChange,
     SizeSavings,
@@ -24,6 +27,11 @@ export type ImageProcessingStatus = {
     progress: number | null;
 };
 
+export type FileProcessingStatus = ImageProcessingStatus & {
+    index: number;
+    file: File;
+};
+
 export type ImageOptimizationOptions = {
     quality?: number;
     targetSize?: number;
@@ -39,6 +47,41 @@ export type ImageOptimizationOptions = {
 export type ImageOptimizationSkipReason =
     | 'output-larger-than-input';
 
+export type FileProcessingClassificationReason =
+    | 'non-image'
+    | 'unsupported-image-format';
+
+export type FileProcessingFailureReason =
+    | ImageOptimizerErrorCode
+    | 'optimization-failed';
+
+export type FileProcessingReason =
+    | ImageOptimizationSkipReason
+    | FileProcessingClassificationReason
+    | FileProcessingFailureReason;
+
+export type ImageFileMetadata = {
+    name: string;
+    type: string;
+    size: number;
+    width: number;
+    height: number;
+};
+
+export type ImageCompressionResult = {
+    quality?: number;
+    encodeAttempts: number;
+    targetSize?: number;
+    targetReached?: boolean;
+};
+
+export type ImageOptimizationTiming = {
+    totalMs: number;
+    decodeMs: number;
+    resizeMs: number;
+    encodeMs: number;
+};
+
 export type ImageOptimizationResult = {
     file: File;
     optimized: boolean;
@@ -46,38 +89,15 @@ export type ImageOptimizationResult = {
     changed: boolean;
     reason?: ImageOptimizationSkipReason;
 
-    original: {
-        name: string;
-        type: string;
-        size: number;
-        width: number;
-        height: number;
-    };
+    original: ImageFileMetadata;
+    output: ImageFileMetadata;
 
-    output: {
-        name: string;
-        type: string;
-        size: number;
-        width: number;
-        height: number;
-    };
-
-    compression: {
-        quality?: number;
-        encodeAttempts: number;
-        targetSize?: number;
-        targetReached?: boolean;
-    };
+    compression: ImageCompressionResult;
 
     savings: SizeSavings;
     sizeChange: SizeChange;
 
-    timing: {
-        totalMs: number;
-        decodeMs: number;
-        resizeMs: number;
-        encodeMs: number;
-    };
+    timing: ImageOptimizationTiming;
 };
 
 export type FileProcessingOutcome =
@@ -96,7 +116,7 @@ export type FileProcessingItemResult = {
     file: File;
     kind: FileProcessingKind;
     outcome: FileProcessingOutcome;
-    reason?: string;
+    reason?: FileProcessingReason;
     optimization?: ImageOptimizationResult;
     error?: ImageOptimizerError;
 };
@@ -124,9 +144,13 @@ export type FileProcessingErrorMode =
     | 'passthrough'
     | 'throw';
 
-export type ProcessFilesOptions = ImageOptimizationOptions & {
+export type ProcessFilesOptions = Omit<
+    ImageOptimizationOptions,
+    'onStatus'
+> & {
     errorMode?: FileProcessingErrorMode;
     concurrency?: number;
+    onStatus?: (status: FileProcessingStatus) => void;
 };
 
 export type ImageOutputFormat =
