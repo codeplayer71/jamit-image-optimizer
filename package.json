@@ -28,6 +28,7 @@
   "license": "ISC",
   "packageManager": "pnpm@10.18.1",
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@vitest/coverage-v8": "^4.1.10",
     "typescript": "^7.0.2",
     "vite": "^8.2.1",
