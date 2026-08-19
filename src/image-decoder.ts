@@ -19,7 +19,12 @@ export async function decodeImage(
 ): Promise<ImageData> {
     switch (format) {
         case 'jpeg':
-            return decodeJpeg(buffer);
+            return decodeJpeg(
+                buffer,
+                {
+                    preserveOrientation: true,
+                },
+            );
 
         case 'png':
             if (isAnimatedPng(buffer)) {

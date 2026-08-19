@@ -74,6 +74,9 @@ describe('decodeImage', () => {
         expect(result).toBe(imageData);
         expect(decodeJpeg).toHaveBeenCalledWith(
             buffer,
+            {
+                preserveOrientation: true,
+            },
         );
     });
 
