@@ -328,16 +328,14 @@ function processImage(
                 ...(
                     (format === 'jpeg' || format === 'webp') && {
                         quality: quality * 100,
+                        ...(targetSize !== undefined && {
+                            targetSize,
+                        }),
+                        ...(minQuality !== undefined && {
+                            minQuality: minQuality * 100,
+                        }),
                     }
                 ),
-                ...(format === 'jpeg' && {
-                    ...(targetSize !== undefined && {
-                        targetSize,
-                    }),
-                    ...(minQuality !== undefined && {
-                        minQuality: minQuality * 100,
-                    }),
-                }),
                 ...(resize?.maxWidth !== undefined && {
                     maxWidth: resize.maxWidth,
                 }),

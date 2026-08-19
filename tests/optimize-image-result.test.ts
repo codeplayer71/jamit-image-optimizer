@@ -381,7 +381,7 @@ describe('optimizeImage result', () => {
         });
     });
 
-    it('returns an optimized WebP result with quality metadata', async () => {
+    it('returns WebP target-size compression metadata', async () => {
         vi.stubGlobal(
             'Worker',
             class extends WorkerMock {
@@ -396,9 +396,10 @@ describe('optimizeImage result', () => {
                             outputHeight: 50,
                             decodeMs: 10,
                             resizeMs: 5,
-                            encodeMs: 20,
-                            finalQuality: 80,
-                            encodeAttempts: 1,
+                            encodeMs: 40,
+                            finalQuality: 72,
+                            encodeAttempts: 5,
+                            targetReached: true,
                         },
                     } as MessageEvent);
                 }
@@ -415,7 +416,7 @@ describe('optimizeImage result', () => {
         );
 
         const result = await optimizeImage(file, {
-            quality: 0.8,
+            quality: 0.85,
             targetSize: 500_000,
             minQuality: 0.5,
             resize: {
@@ -438,8 +439,10 @@ describe('optimizeImage result', () => {
         });
 
         expect(result.compression).toEqual({
-            quality: 0.8,
-            encodeAttempts: 1,
+            quality: 0.72,
+            encodeAttempts: 5,
+            targetSize: 500_000,
+            targetReached: true,
         });
     });
 });
