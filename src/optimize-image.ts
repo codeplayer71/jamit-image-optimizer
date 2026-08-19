@@ -1,3 +1,4 @@
+import ImageWorker from './image-worker?worker&inline';
 import { ImageOptimizerError } from './errors';
 import { detectImageFormat } from './image-detection';
 import {
@@ -566,15 +567,7 @@ function processImage(
 }
 
 function createWorker(): Worker {
-    return new Worker(
-        new URL(
-            './image-worker.ts',
-            import.meta.url,
-        ),
-        {
-            type: 'module',
-        },
-    );
+    return new ImageWorker();
 }
 
 function createCompressionResult(

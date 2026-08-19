@@ -6,6 +6,19 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-08-20
+
+### Fixed
+
+- Fixed Web Worker loading in production builds of consuming applications such as Nuxt and Vite projects
+- Bundled the image-processing worker inline so consumers no longer need to resolve or copy a separate `image-worker` asset
+- Fixed `worker-failed` errors that could occur in production builds while the same integration worked correctly in development mode
+
+### Added
+
+- Added package build verification to ensure the image worker remains bundled inline
+- Added release validation that fails when an external `image-worker` asset is generated or referenced
+
 ## [0.1.0] - 2026-08-19
 
 ### Added
