@@ -225,3 +225,27 @@ test('searches WebP quality to reach a target size in the real browser', async (
         0.9,
     );
 });
+
+test('keeps HEIC unchanged when the browser has no native codec support', async ({
+                                                                                     page,
+                                                                                 }) => {
+    await page.goto(
+        '/browser-test.html',
+    );
+
+    const result =
+        await page.evaluate(async () => {
+            return window
+                .runHeicFallbackTest();
+        });
+
+    expect(result).toEqual({
+        name: 'native-test.heic',
+        type: 'image/heic',
+        outcome: 'unchanged',
+        reason: 'codec-not-supported',
+        imageFiles: 1,
+        unchangedFiles: 1,
+        failedOptimizations: 0,
+    });
+});

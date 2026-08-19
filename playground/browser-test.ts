@@ -60,6 +60,16 @@ type BrowserTargetSizeResult = {
     encodeAttempts: number;
 };
 
+type BrowserHeicFallbackResult = {
+    name: string;
+    type: string;
+    outcome: string;
+    reason: string | null;
+    imageFiles: number;
+    unchangedFiles: number;
+    failedOptimizations: number;
+};
+
 declare global {
     interface Window {
         runImageOptimizationTest:
@@ -82,6 +92,9 @@ declare global {
 
         runTargetSizeTest:
             () => Promise<BrowserTargetSizeResult>;
+
+        runHeicFallbackTest:
+            () => Promise<BrowserHeicFallbackResult>;
     }
 }
 
@@ -595,6 +608,56 @@ window.runTargetSizeTest =
             encodeAttempts:
             result.compression
                 .encodeAttempts,
+        };
+    };
+
+window.runHeicFallbackTest =
+    async (): Promise<BrowserHeicFallbackResult> => {
+        const bytes = new Uint8Array([
+            0x00, 0x00, 0x00, 0x18,
+            0x66, 0x74, 0x79, 0x70,
+            0x68, 0x65, 0x69, 0x63,
+            0x00, 0x00, 0x00, 0x00,
+            0x6d, 0x69, 0x66, 0x31,
+            0x68, 0x65, 0x69, 0x63,
+        ]);
+
+        const file = new File(
+            [bytes],
+            'native-test.heic',
+            {
+                type: 'image/heic',
+            },
+        );
+
+        const result = await processFiles(
+            [file],
+            {
+                mode: 'format',
+                format: 'webp',
+            },
+        );
+
+        const item = result.items[0];
+        const output = result.files[0];
+
+        if (!item || !output) {
+            throw new Error(
+                'Expected one processed HEIC file.',
+            );
+        }
+
+        return {
+            name: output.name,
+            type: output.type,
+            outcome: item.outcome,
+            reason: item.reason ?? null,
+            imageFiles:
+            result.summary.imageFiles,
+            unchangedFiles:
+            result.summary.unchangedFiles,
+            failedOptimizations:
+            result.summary.failedOptimizations,
         };
     };
 
