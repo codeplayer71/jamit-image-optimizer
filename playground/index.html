@@ -2,337 +2,17 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1.0"
+    />
 
     <title>JamIT Image Optimizer Playground</title>
 
-    <style>
-        :root {
-            font-family:
-                    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
-                    "Segoe UI", sans-serif;
-            color: #e5e7eb;
-            background: #0b1120;
-            font-synthesis: none;
-            text-rendering: optimizeLegibility;
-        }
-
-        * {
-            box-sizing: border-box;
-        }
-
-        body {
-            margin: 0;
-            min-width: 320px;
-            min-height: 100vh;
-            background:
-                    radial-gradient(
-                            circle at top,
-                            rgba(59, 130, 246, 0.12),
-                            transparent 38rem
-                    ),
-                    #0b1120;
-        }
-
-        button,
-        input {
-            font: inherit;
-        }
-
-        button {
-            border: 0;
-        }
-
-        .page {
-            width: min(1100px, calc(100% - 32px));
-            margin: 0 auto;
-            padding: 64px 0;
-        }
-
-        .header {
-            margin-bottom: 32px;
-        }
-
-        .eyebrow {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            margin-bottom: 14px;
-            padding: 6px 10px;
-            border: 1px solid rgba(96, 165, 250, 0.2);
-            border-radius: 999px;
-            color: #93c5fd;
-            background: rgba(59, 130, 246, 0.08);
-            font-size: 13px;
-            font-weight: 600;
-        }
-
-        .eyebrow svg {
-            width: 14px;
-            height: 14px;
-        }
-
-        h1 {
-            margin: 0;
-            color: #f8fafc;
-            font-size: clamp(32px, 5vw, 48px);
-            line-height: 1.05;
-            letter-spacing: -0.04em;
-        }
-
-        .subtitle {
-            max-width: 680px;
-            margin: 16px 0 0;
-            color: #94a3b8;
-            font-size: 17px;
-            line-height: 1.65;
-        }
-
-        .card {
-            overflow: hidden;
-            border: 1px solid rgba(148, 163, 184, 0.14);
-            border-radius: 18px;
-            background: rgba(15, 23, 42, 0.82);
-            box-shadow:
-                    0 24px 60px rgba(0, 0, 0, 0.28),
-                    inset 0 1px 0 rgba(255, 255, 255, 0.03);
-            backdrop-filter: blur(18px);
-        }
-
-        .controls {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 12px;
-            align-items: center;
-            padding: 20px;
-            border-bottom: 1px solid rgba(148, 163, 184, 0.1);
-        }
-
-        .file-input {
-            position: absolute;
-            width: 1px;
-            height: 1px;
-            overflow: hidden;
-            clip: rect(0, 0, 0, 0);
-            white-space: nowrap;
-            clip-path: inset(50%);
-        }
-
-        .button {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 9px;
-            min-height: 42px;
-            padding: 0 16px;
-            border-radius: 10px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 650;
-            transition:
-                    transform 140ms ease,
-                    background-color 140ms ease,
-                    border-color 140ms ease,
-                    opacity 140ms ease;
-        }
-
-        .button:hover:not(:disabled) {
-            transform: translateY(-1px);
-        }
-
-        .button svg {
-            width: 17px;
-            height: 17px;
-            flex: 0 0 auto;
-        }
-
-        .button-primary {
-            color: #ffffff;
-            background: #2563eb;
-        }
-
-        .button-primary:hover {
-            background: #3b82f6;
-        }
-
-        .button-secondary {
-            border: 1px solid rgba(148, 163, 184, 0.18);
-            color: #cbd5e1;
-            background: rgba(30, 41, 59, 0.75);
-        }
-
-        .button-secondary:hover:not(:disabled) {
-            border-color: rgba(148, 163, 184, 0.3);
-            background: #334155;
-        }
-
-        .button:disabled {
-            cursor: not-allowed;
-            opacity: 0.4;
-        }
-
-        .processing-status {
-            display: inline-flex;
-            align-items: center;
-            min-height: 30px;
-            padding: 0 10px;
-            border: 1px solid rgba(96, 165, 250, 0.18);
-            border-radius: 999px;
-            color: #93c5fd;
-            background: rgba(59, 130, 246, 0.08);
-            font-size: 12px;
-            font-weight: 650;
-        }
-
-        .hint {
-            margin-left: auto;
-            color: #64748b;
-            font-size: 13px;
-        }
-
-        .content {
-            display: grid;
-            grid-template-columns: minmax(0, 1fr);
-            gap: 0;
-        }
-
-        .section {
-            min-width: 0;
-            padding: 24px;
-        }
-
-        .section + .section {
-            border-top: 1px solid rgba(148, 163, 184, 0.1);
-        }
-
-        .section-title {
-            display: flex;
-            align-items: center;
-            gap: 9px;
-            margin: 0 0 16px;
-            color: #cbd5e1;
-            font-size: 14px;
-            font-weight: 650;
-        }
-
-        .section-title svg {
-            width: 17px;
-            height: 17px;
-            color: #60a5fa;
-        }
-
-        #result {
-            min-height: 110px;
-            margin: 0;
-            padding: 18px;
-            overflow-x: auto;
-            border: 1px solid rgba(148, 163, 184, 0.1);
-            border-radius: 12px;
-            color: #cbd5e1;
-            background: rgba(2, 6, 23, 0.65);
-            font-family:
-                    "JetBrains Mono", "SFMono-Regular", Consolas, "Liberation Mono",
-                    monospace;
-            font-size: 13px;
-            line-height: 1.65;
-            white-space: pre-wrap;
-            overflow-wrap: anywhere;
-        }
-
-        #result:empty::before {
-            content: "Select a JPEG image to start processing.";
-            color: #64748b;
-        }
-
-        .preview-container {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 220px;
-            overflow: hidden;
-            border: 1px solid rgba(148, 163, 184, 0.1);
-            border-radius: 12px;
-            background:
-                    linear-gradient(
-                            45deg,
-                            rgba(148, 163, 184, 0.035) 25%,
-                            transparent 25%
-                    ),
-                    linear-gradient(
-                            -45deg,
-                            rgba(148, 163, 184, 0.035) 25%,
-                            transparent 25%
-                    ),
-                    linear-gradient(
-                            45deg,
-                            transparent 75%,
-                            rgba(148, 163, 184, 0.035) 75%
-                    ),
-                    linear-gradient(
-                            -45deg,
-                            transparent 75%,
-                            rgba(148, 163, 184, 0.035) 75%
-                    ),
-                    rgba(2, 6, 23, 0.45);
-            background-position:
-                    0 0,
-                    0 10px,
-                    10px -10px,
-                    -10px 0;
-            background-size: 20px 20px;
-        }
-
-        #output-preview {
-            display: block;
-            width: 100%;
-            max-height: 620px;
-            object-fit: contain;
-        }
-
-        #output-preview:not([src]),
-        #output-preview[src=""] {
-            display: none;
-        }
-
-        .preview-container:has(#output-preview:not([src]))::before {
-            content: "Optimized image preview will appear here";
-            padding: 32px;
-            color: #64748b;
-            font-size: 14px;
-            text-align: center;
-        }
-
-        @media (min-width: 860px) {
-            .content {
-                grid-template-columns: minmax(320px, 0.85fr) minmax(0, 1.15fr);
-            }
-
-            .section + .section {
-                border-top: 0;
-                border-left: 1px solid rgba(148, 163, 184, 0.1);
-            }
-        }
-
-        @media (max-width: 600px) {
-            .page {
-                width: min(100% - 20px, 1100px);
-                padding: 32px 0;
-            }
-
-            .controls {
-                align-items: stretch;
-            }
-
-            .button {
-                flex: 1 1 auto;
-            }
-
-            .hint {
-                width: 100%;
-                margin-left: 0;
-            }
-        }
-    </style>
+    <link
+            rel="stylesheet"
+            href="/style.css"
+    />
 </head>
 
 <body>
@@ -362,35 +42,21 @@
         <h1>JamIT Image Optimizer</h1>
 
         <p class="subtitle">
-            Browser-based image optimization playground. Images are processed
-            locally using Web Workers and WebAssembly.
+            Optimize images locally in the browser using Web Workers and
+            WebAssembly. No image data is uploaded to a server.
         </p>
     </header>
 
     <div class="card">
         <div class="controls">
-            <input
-                    id="file-input"
-                    class="file-input"
-                    type="file"
-                    multiple
-            />
-
-            <label class="button button-primary" for="file-input">
-                <svg
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        aria-hidden="true"
-                >
-                    <rect x="3" y="3" width="18" height="18" rx="2" />
-                    <circle cx="8.5" cy="8.5" r="1.5" />
-                    <path d="m21 15-5-5L5 21" />
-                </svg>
-
-                Choose image
-            </label>
+            <button
+                    id="optimize-button"
+                    class="button button-primary"
+                    type="button"
+                    disabled
+            >
+                Optimize files
+            </button>
 
             <button
                     id="cancel-button"
@@ -398,31 +64,111 @@
                     type="button"
                     disabled
             >
+                Cancel
+            </button>
+
+            <button
+                    id="reset-button"
+                    class="button button-secondary"
+                    type="button"
+            >
+                Reset
+            </button>
+
+            <span
+                    id="processing-status"
+                    class="processing-status"
+                    aria-live="polite"
+            >
+                Idle
+            </span>
+
+            <span
+                    id="selection-hint"
+                    class="hint"
+            >
+                No files selected
+            </span>
+        </div>
+
+        <div
+                id="error-banner"
+                class="error-banner"
+                role="alert"
+                hidden
+        >
+            <div
+                    class="error-banner-icon"
+                    aria-hidden="true"
+            >
                 <svg
                         viewBox="0 0 24 24"
                         fill="none"
                         stroke="currentColor"
                         stroke-width="2"
-                        aria-hidden="true"
                 >
-                    <circle cx="12" cy="12" r="10" />
-                    <path d="m15 9-6 6" />
-                    <path d="m9 9 6 6" />
+                    <circle
+                            cx="12"
+                            cy="12"
+                            r="10"
+                    />
+                    <path d="M12 8v5" />
+                    <path d="M12 16h.01" />
                 </svg>
+            </div>
 
-                Cancel processing
-            </button>
+            <div class="error-banner-content">
+                <strong
+                        id="error-title"
+                        class="error-banner-title"
+                >
+                    Processing failed
+                </strong>
 
-            <span id="processing-status" class="processing-status">
-  Idle
-</span>
+                <p
+                        id="error-message"
+                        class="error-banner-message"
+                ></p>
 
-            <span class="hint">JPEG · max 1920 × 1920 · quality 0.75</span>
+                <code
+                        id="error-code"
+                        class="error-banner-code"
+                        hidden
+                ></code>
+            </div>
         </div>
 
-        <div class="content">
-            <section class="section">
-                <h2 class="section-title">
+        <section class="block">
+            <div class="block-header">
+                <div class="block-heading">
+                    <span class="block-number">
+                        1
+                    </span>
+
+                    <div>
+                        <h2 class="block-title">
+                            Files
+                        </h2>
+
+                        <p class="block-description">
+                            Choose one or multiple files for the processing batch.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <input
+                    id="file-input"
+                    class="file-input"
+                    type="file"
+                    multiple
+            />
+
+            <div
+                    id="drop-zone"
+                    class="drop-zone"
+            >
+                <div class="drop-zone-icon">
                     <svg
                             viewBox="0 0 24 24"
                             fill="none"
@@ -430,34 +176,363 @@
                             stroke-width="2"
                             aria-hidden="true"
                     >
-                        <path d="M4 4h16v16H4z" />
-                        <path d="M8 9h8" />
-                        <path d="M8 13h6" />
-                        <path d="M8 17h4" />
+                        <path d="M12 16V4" />
+                        <path d="m7 9 5-5 5 5" />
+                        <path d="M4 20h16" />
                     </svg>
+                </div>
 
-                    Processing result
-                </h2>
+                <p class="drop-zone-title">
+                    Drop files here
+                </p>
+
+                <p class="drop-zone-text">
+                    Supported images are optimized locally. Non-image files can
+                    remain unchanged in the same batch.
+                </p>
+
+                <label
+                        id="choose-files-button"
+                        class="button button-secondary"
+                        for="file-input"
+                >
+                    Choose files
+                </label>
+
+                <p class="drop-zone-note">
+                    JPEG · PNG · WebP · native HEIC/HEIF where supported
+                </p>
+            </div>
+
+            <div
+                    id="selected-files"
+                    class="selected-files"
+            >
+                <div class="selected-files-header">
+                    <h3 class="selected-files-title">
+                        Selected files
+                    </h3>
+
+                    <span
+                            id="selected-files-summary"
+                            class="selected-files-summary"
+                    ></span>
+                </div>
+
+                <ul
+                        id="selected-files-list"
+                        class="selected-files-list"
+                ></ul>
+            </div>
+        </section>
+
+        <section class="block">
+            <div class="block-header">
+                <div class="block-heading">
+                    <span class="block-number">
+                        2
+                    </span>
+
+                    <div>
+                        <h2 class="block-title">
+                            Optimization settings
+                        </h2>
+
+                        <p class="block-description">
+                            Configure how supported images should be processed.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="settings-grid">
+                <label class="field">
+                    <span class="field-label">
+                        Output mode
+                    </span>
+
+                    <select
+                            id="mode-input"
+                            class="field-control"
+                    >
+                        <option
+                                value="auto"
+                                selected
+                        >
+                            Auto
+                        </option>
+
+                        <option value="original">
+                            Original
+                        </option>
+
+                        <option value="format">
+                            Format
+                        </option>
+                    </select>
+
+                    <span class="field-hint">
+                        Auto tries WebP and keeps it only when beneficial.
+                    </span>
+                </label>
+
+                <label class="field">
+                    <span class="field-label">
+                        Output format
+                    </span>
+
+                    <select
+                            id="format-input"
+                            class="field-control"
+                            disabled
+                    >
+                        <option
+                                value="webp"
+                                selected
+                        >
+                            WebP
+                        </option>
+
+                        <option value="jpeg">
+                            JPEG
+                        </option>
+
+                        <option value="png">
+                            PNG
+                        </option>
+                    </select>
+
+                    <span class="field-hint">
+                        Used only in Format mode.
+                    </span>
+                </label>
+
+                <label class="field">
+                    <span class="field-label">
+                        Quality
+                    </span>
+
+                    <input
+                            id="quality-input"
+                            class="field-control"
+                            type="number"
+                            min="1"
+                            max="100"
+                            step="1"
+                            value="85"
+                    />
+
+                    <span class="field-hint">
+                        JPEG / WebP quality in percent.
+                    </span>
+                </label>
+
+                <label class="field">
+                    <span class="field-label">
+                        Target size (KiB)
+                    </span>
+
+                    <input
+                            id="target-size-input"
+                            class="field-control"
+                            type="number"
+                            min="1"
+                            step="1"
+                            value="500"
+                    />
+
+                    <span class="field-hint">
+                        Optional. Clear to disable.
+                    </span>
+                </label>
+
+                <label class="field">
+                    <span class="field-label">
+                        Minimum quality
+                    </span>
+
+                    <input
+                            id="min-quality-input"
+                            class="field-control"
+                            type="number"
+                            min="1"
+                            max="100"
+                            step="1"
+                            value="50"
+                    />
+
+                    <span class="field-hint">
+                        Lower bound for target-size search.
+                    </span>
+                </label>
+
+                <label class="field">
+                    <span class="field-label">
+                        Max width
+                    </span>
+
+                    <input
+                            id="max-width-input"
+                            class="field-control"
+                            type="number"
+                            min="1"
+                            step="1"
+                            value="1920"
+                    />
+
+                    <span class="field-hint">
+                        Pixels. Images are never upscaled.
+                    </span>
+                </label>
+
+                <label class="field">
+                    <span class="field-label">
+                        Max height
+                    </span>
+
+                    <input
+                            id="max-height-input"
+                            class="field-control"
+                            type="number"
+                            min="1"
+                            step="1"
+                            value="1920"
+                    />
+
+                    <span class="field-hint">
+                        Pixels. Aspect ratio is preserved.
+                    </span>
+                </label>
+
+                <label class="field">
+                    <span class="field-label">
+                        Concurrency
+                    </span>
+
+                    <select
+                            id="concurrency-input"
+                            class="field-control"
+                    >
+                        <option value="1">
+                            1
+                        </option>
+
+                        <option
+                                value="2"
+                                selected
+                        >
+                            2
+                        </option>
+
+                        <option value="3">
+                            3
+                        </option>
+
+                        <option value="4">
+                            4
+                        </option>
+                    </select>
+
+                    <span class="field-hint">
+                        Maximum parallel image workers.
+                    </span>
+                </label>
+            </div>
+        </section>
+
+        <section
+                id="results-section"
+                class="block results-section"
+                hidden
+        >
+            <div class="block-header">
+                <div class="block-heading">
+                    <span class="block-number">
+                        3
+                    </span>
+
+                    <div>
+                        <h2 class="block-title">
+                            Results
+                        </h2>
+
+                        <p class="block-description">
+                            Compare the processed output with the original files.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div
+                    id="batch-summary"
+                    class="summary-grid"
+            ></div>
+
+            <div
+                    id="result-list"
+                    class="result-list"
+            ></div>
+        </section>
+
+        <div class="details-grid">
+            <section class="detail-section">
+                <div class="detail-header">
+                    <div>
+                        <h2 class="detail-title">
+                            Technical result
+                        </h2>
+
+                        <p class="detail-description">
+                            Full structured result returned by the package.
+                        </p>
+                    </div>
+
+                    <button
+                            id="copy-result-button"
+                            class="button button-secondary button-small"
+                            type="button"
+                            disabled
+                    >
+                        Copy
+                    </button>
+                </div>
 
                 <pre id="result"></pre>
             </section>
 
-            <section class="section">
-                <h2 class="section-title">
-                    <svg
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            aria-hidden="true"
-                    >
-                        <rect x="3" y="3" width="18" height="18" rx="2" />
-                        <circle cx="8.5" cy="8.5" r="1.5" />
-                        <path d="m21 15-5-5L5 21" />
-                    </svg>
-
-                    Optimized preview
+            <section class="detail-section">
+                <h2 class="detail-title">
+                    Output preview
                 </h2>
+
+                <p class="detail-description">
+                    Select a processed image from the result list.
+                </p>
+
+                <div
+                        id="preview-toolbar"
+                        class="preview-toolbar"
+                        hidden
+                >
+                    <div class="preview-info">
+                        <span
+                                id="preview-file-name"
+                                class="preview-file-name"
+                        ></span>
+
+                        <span
+                                id="preview-file-meta"
+                                class="preview-file-meta"
+                        ></span>
+                    </div>
+
+                    <a
+                            id="preview-download-button"
+                            class="button button-secondary button-small"
+                    >
+                        Download
+                    </a>
+                </div>
 
                 <div class="preview-container">
                     <img
@@ -470,6 +545,9 @@
     </div>
 </main>
 
-<script type="module" src="/main.ts"></script>
+<script
+        type="module"
+        src="/main.ts"
+></script>
 </body>
 </html>
