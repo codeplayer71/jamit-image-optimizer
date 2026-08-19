@@ -4,14 +4,19 @@ export const DEFAULT_MAX_INPUT_BYTES =
 export const DEFAULT_MAX_PIXELS =
     25_000_000;
 
+export const DEFAULT_MAX_DIMENSION =
+    16_384;
+
 export type ImageProcessingLimits = {
     maxInputBytes?: number;
     maxPixels?: number;
+    maxDimension?: number;
 };
 
 export type ResolvedImageProcessingLimits = {
     maxInputBytes: number;
     maxPixels: number;
+    maxDimension: number;
 };
 
 export function resolveImageProcessingLimits(
@@ -25,27 +30,29 @@ export function resolveImageProcessingLimits(
         limits.maxPixels ??
         DEFAULT_MAX_PIXELS;
 
-    if (
-        !Number.isSafeInteger(maxInputBytes) ||
-        maxInputBytes <= 0
-    ) {
-        throw new RangeError(
-            'maxInputBytes must be a positive integer.',
-        );
-    }
+    const maxDimension =
+        limits.maxDimension ??
+        DEFAULT_MAX_DIMENSION;
 
-    if (
-        !Number.isSafeInteger(maxPixels) ||
-        maxPixels <= 0
-    ) {
-        throw new RangeError(
-            'maxPixels must be a positive integer.',
-        );
-    }
+    validatePositiveSafeInteger(
+        maxInputBytes,
+        'maxInputBytes',
+    );
+
+    validatePositiveSafeInteger(
+        maxPixels,
+        'maxPixels',
+    );
+
+    validatePositiveSafeInteger(
+        maxDimension,
+        'maxDimension',
+    );
 
     return {
         maxInputBytes,
         maxPixels,
+        maxDimension,
     };
 }
 
@@ -62,8 +69,32 @@ export function exceedsPixelLimit(
     limits: ResolvedImageProcessingLimits,
 ): boolean {
     return (
-        width > 0 &&
-        height > 0 &&
-        width * height > limits.maxPixels
+        width * height >
+        limits.maxPixels
     );
+}
+
+export function exceedsDimensionLimit(
+    width: number,
+    height: number,
+    limits: ResolvedImageProcessingLimits,
+): boolean {
+    return (
+        width > limits.maxDimension ||
+        height > limits.maxDimension
+    );
+}
+
+function validatePositiveSafeInteger(
+    value: number,
+    name: string,
+): void {
+    if (
+        !Number.isSafeInteger(value) ||
+        value <= 0
+    ) {
+        throw new RangeError(
+            `${name} must be a positive integer.`,
+        );
+    }
 }

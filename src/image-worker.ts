@@ -22,6 +22,7 @@ type ProcessImageMessage = {
     quality: number;
     targetSize?: number;
     minQuality?: number;
+    maxDimension?: number;
     maxPixels?: number;
     maxWidth?: number;
     maxHeight?: number;
@@ -52,6 +53,21 @@ self.onmessage = async (
 
         const decodeMs =
             performance.now() - decodeStartedAt;
+
+        if (
+            event.data.maxDimension !== undefined &&
+            (
+                originalImageData.width >
+                event.data.maxDimension ||
+                originalImageData.height >
+                event.data.maxDimension
+            )
+        ) {
+            throw new ImageOptimizerError(
+                'resource-limit-exceeded',
+                `Decoded image dimensions of ${originalImageData.width}x${originalImageData.height} exceed the configured maximum dimension of ${event.data.maxDimension} pixels.`,
+            );
+        }
 
         const pixelCount =
             originalImageData.width *

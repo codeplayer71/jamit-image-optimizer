@@ -888,4 +888,106 @@ describe('optimizeImage result', () => {
         expect(result.converted).toBe(false);
         expect(result.changed).toBe(true);
     });
+
+    it('passes the maximum dimension limit to the worker', async () => {
+        let postedMessage: unknown;
+
+        vi.stubGlobal(
+            'Worker',
+            class {
+                onmessage:
+                    | ((event: MessageEvent) => void)
+                    | null = null;
+
+                onerror:
+                    | ((event: ErrorEvent) => void)
+                    | null = null;
+
+                postMessage(message: unknown): void {
+                    postedMessage = message;
+
+                    this.onmessage?.({
+                        data: {
+                            type: 'result',
+                            buffer: new ArrayBuffer(2),
+                            originalWidth: 200,
+                            originalHeight: 100,
+                            outputWidth: 200,
+                            outputHeight: 100,
+                            decodeMs: 10,
+                            resizeMs: 0,
+                            encodeMs: 20,
+                            finalQuality: 80,
+                            encodeAttempts: 1,
+                        },
+                    } as MessageEvent);
+                }
+
+                terminate(): void {}
+            },
+        );
+
+        const file = createTestImageFile(
+            'jpeg',
+            {
+                name: 'photo.jpg',
+            },
+        );
+
+        await optimizeImage(file, {
+            limits: {
+                maxDimension: 8_192,
+            },
+        });
+
+        expect(postedMessage).toMatchObject({
+            maxDimension: 8_192,
+        });
+    });
+
+    it('propagates a maximum dimension resource limit from the worker', async () => {
+        vi.stubGlobal(
+            'Worker',
+            class {
+                onmessage:
+                    | ((event: MessageEvent) => void)
+                    | null = null;
+
+                onerror:
+                    | ((event: ErrorEvent) => void)
+                    | null = null;
+
+                postMessage(): void {
+                    this.onmessage?.({
+                        data: {
+                            type: 'error',
+                            code: 'resource-limit-exceeded',
+                            message:
+                                'Decoded image exceeds the configured dimension limit.',
+                        },
+                    } as MessageEvent);
+                }
+
+                terminate(): void {}
+            },
+        );
+
+        const file = createTestImageFile(
+            'jpeg',
+            {
+                name: 'photo.jpg',
+            },
+        );
+
+        await expect(
+            optimizeImage(file, {
+                limits: {
+                    maxDimension: 8_192,
+                },
+            }),
+        ).rejects.toMatchObject({
+            name: 'ImageOptimizerError',
+            code: 'resource-limit-exceeded',
+        });
+    });
 });

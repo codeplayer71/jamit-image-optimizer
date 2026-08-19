@@ -276,6 +276,7 @@ export async function optimizeImage(
         options.targetSize,
         options.minQuality,
         limits.maxPixels,
+        limits.maxDimension,
         options.signal,
         options.onStatus,
     );
@@ -428,6 +429,7 @@ function processImage(
     targetSize?: number,
     minQuality?: number,
     maxPixels?: number,
+    maxDimension?: number,
     signal?: AbortSignal,
     onStatus?: (
         status: ImageProcessingStatus,
@@ -537,6 +539,9 @@ function processImage(
                 }),
                 ...(maxPixels !== undefined && {
                     maxPixels,
+                }),
+                ...(maxDimension !== undefined && {
+                    maxDimension,
                 }),
                 ...(resize?.maxWidth !== undefined && {
                     maxWidth: resize.maxWidth,

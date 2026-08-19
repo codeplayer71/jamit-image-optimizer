@@ -5,8 +5,10 @@ import {
 } from 'vitest';
 
 import {
+    DEFAULT_MAX_DIMENSION,
     DEFAULT_MAX_INPUT_BYTES,
     DEFAULT_MAX_PIXELS,
+    exceedsDimensionLimit,
     exceedsInputByteLimit,
     exceedsPixelLimit,
     resolveImageProcessingLimits,
@@ -21,6 +23,8 @@ describe('image processing limits', () => {
             DEFAULT_MAX_INPUT_BYTES,
             maxPixels:
             DEFAULT_MAX_PIXELS,
+            maxDimension:
+            DEFAULT_MAX_DIMENSION,
         });
     });
 
@@ -33,6 +37,8 @@ describe('image processing limits', () => {
         ).toEqual({
             maxInputBytes: 10_000,
             maxPixels: 5_000_000,
+            maxDimension:
+            DEFAULT_MAX_DIMENSION,
         });
     });
 
@@ -89,6 +95,72 @@ describe('image processing limits', () => {
             exceedsPixelLimit(
                 2_000,
                 1_000,
+                limits,
+            ),
+        ).toBe(true);
+    });
+
+    it('uses the default maximum dimension', () => {
+        expect(
+            resolveImageProcessingLimits(),
+        ).toMatchObject({
+            maxDimension: 16_384,
+        });
+    });
+
+    it('allows overriding the maximum dimension', () => {
+        expect(
+            resolveImageProcessingLimits({
+                maxDimension: 8_192,
+            }),
+        ).toMatchObject({
+            maxDimension: 8_192,
+        });
+    });
+
+    it.each([
+        0,
+        -1,
+        1.5,
+        Number.NaN,
+        Number.POSITIVE_INFINITY,
+    ])(
+        'rejects invalid maxDimension value %s',
+        (maxDimension) => {
+            expect(() =>
+                resolveImageProcessingLimits({
+                    maxDimension,
+                }),
+            ).toThrow(RangeError);
+        },
+    );
+
+    it('detects images above the dimension limit', () => {
+        const limits =
+            resolveImageProcessingLimits({
+                maxDimension: 8_192,
+            });
+
+        expect(
+            exceedsDimensionLimit(
+                8_192,
+                4_000,
+                limits,
+            ),
+        ).toBe(false);
+
+        expect(
+            exceedsDimensionLimit(
+                8_193,
+                4_000,
+                limits,
+            ),
+        ).toBe(true);
+
+        expect(
+            exceedsDimensionLimit(
+                4_000,
+                8_193,
                 limits,
             ),
         ).toBe(true);
