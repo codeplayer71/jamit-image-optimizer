@@ -113,3 +113,40 @@ test('aborts and terminates an active browser worker', async ({
         terminatedWorkers: 1,
     });
 });
+
+test('detects real JPEG content with missing or incorrect MIME types', async ({
+                                                                                  page,
+                                                                              }) => {
+    await page.goto(
+        '/browser-test.html',
+    );
+
+    const result =
+        await page.evaluate(async () => {
+            return window
+                .runSignatureDetectionTest();
+        });
+
+    expect(result.names).toEqual([
+        'empty-mime.webp',
+        'incorrect-mime.webp',
+    ]);
+
+    expect(result.types).toEqual([
+        'image/webp',
+        'image/webp',
+    ]);
+
+    expect(result.outcomes[0]).toMatch(
+        /^(optimized|changed)$/,
+    );
+
+    expect(result.outcomes[1]).toMatch(
+        /^(optimized|changed)$/,
+    );
+
+    expect(result).toMatchObject({
+        imageFiles: 2,
+        failedOptimizations: 0,
+    });
+});

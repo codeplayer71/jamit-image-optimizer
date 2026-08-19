@@ -37,6 +37,14 @@ type BrowserAbortResult = {
     terminatedWorkers: number;
 };
 
+type BrowserSignatureResult = {
+    names: string[];
+    types: string[];
+    outcomes: string[];
+    imageFiles: number;
+    failedOptimizations: number;
+};
+
 declare global {
     interface Window {
         runImageOptimizationTest:
@@ -50,6 +58,9 @@ declare global {
 
         runAbortTest:
             () => Promise<BrowserAbortResult>;
+
+        runSignatureDetectionTest:
+            () => Promise<BrowserSignatureResult>;
     }
 }
 
@@ -385,6 +396,76 @@ window.runAbortTest =
         } finally {
             window.Worker = NativeWorker;
         }
+    };
+
+window.runSignatureDetectionTest =
+    async (): Promise<BrowserSignatureResult> => {
+        const firstSource =
+            await createImageFile(
+                'source.jpg',
+                'image/jpeg',
+                320,
+                240,
+            );
+
+        const secondSource =
+            await createImageFile(
+                'source.jpg',
+                'image/jpeg',
+                320,
+                240,
+            );
+
+        const emptyMimeFile = new File(
+            [
+                await firstSource.arrayBuffer(),
+            ],
+            'empty-mime.bin',
+            {
+                type: '',
+            },
+        );
+
+        const incorrectMimeFile = new File(
+            [
+                await secondSource.arrayBuffer(),
+            ],
+            'incorrect-mime.bin',
+            {
+                type:
+                    'application/octet-stream',
+            },
+        );
+
+        const result = await processFiles(
+            [
+                emptyMimeFile,
+                incorrectMimeFile,
+            ],
+            {
+                mode: 'format',
+                format: 'webp',
+                quality: 0.8,
+                concurrency: 2,
+            },
+        );
+
+        return {
+            names: result.files.map(
+                (file) => file.name,
+            ),
+            types: result.files.map(
+                (file) => file.type,
+            ),
+            outcomes: result.items.map(
+                (item) => item.outcome,
+            ),
+            imageFiles:
+            result.summary.imageFiles,
+            failedOptimizations:
+            result.summary
+                .failedOptimizations,
+        };
     };
 
 async function createImageFile(
