@@ -20,6 +20,9 @@
   "scripts": {
     "dev": "vite playground",
     "build": "vite build && tsc -p tsconfig.build.json",
+    "prepack": "pnpm build",
+    "prepublishOnly": "pnpm typecheck && pnpm test:all",
+    "release:check": "pnpm typecheck && pnpm test:all && pnpm build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --exclude \"tests/browser/**\"",
     "test:watch": "vitest --exclude \"tests/browser/**\"",
@@ -42,6 +45,14 @@
   ],
   "author": "JamIT",
   "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/codeplayer71/jamit-image-optimizer.git"
+  },
+  "bugs": {
+    "url": "https://github.com/codeplayer71/jamit-image-optimizer/issues"
+  },
+  "homepage": "https://jamit.one/packages/jamit-image-optimizer",
   "packageManager": "pnpm@10.18.1",
   "devDependencies": {
     "@jsquash/jpeg": "^1.6.0",
