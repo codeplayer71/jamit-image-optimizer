@@ -3,18 +3,18 @@ import {
     getImageFormat,
     type ImageFormat,
 } from './image-format';
-import type {
-    ImageOptimizationOptions,
-    ImageOptimizationResult,
-    ImageProcessingStatus,
-    ImageResizeOptions,
-} from './types';
-
 import {
     getOutputFileName,
     getOutputMimeType,
 } from './output-file';
 import { resolveOutputFormat } from './output-format';
+import type {
+    ImageOptimizationOptions,
+    ImageOptimizationResult,
+    ImageOutputFormat,
+    ImageProcessingStatus,
+    ImageResizeOptions,
+} from './types';
 
 type WorkerResult = {
     type: 'result';
@@ -39,7 +39,10 @@ type WorkerStatus = {
 
 type WorkerError = {
     type: 'error';
-    code: 'unsupported-format' | 'worker-failed';
+    code:
+        | 'unsupported-format'
+        | 'codec-not-supported'
+        | 'worker-failed';
     message: string;
 };
 
@@ -56,7 +59,11 @@ export async function optimizeImage(
 ): Promise<ImageOptimizationResult> {
     const quality = options.quality ?? DEFAULT_QUALITY;
 
-    if (!Number.isFinite(quality) || quality <= 0 || quality > 1) {
+    if (
+        !Number.isFinite(quality) ||
+        quality <= 0 ||
+        quality > 1
+    ) {
         throw new ImageOptimizerError(
             'invalid-options',
             'quality must be greater than 0 and less than or equal to 1.',
@@ -67,7 +74,10 @@ export async function optimizeImage(
 
     if (
         targetSize !== undefined &&
-        (!Number.isSafeInteger(targetSize) || targetSize <= 0)
+        (
+            !Number.isSafeInteger(targetSize) ||
+            targetSize <= 0
+        )
     ) {
         throw new ImageOptimizerError(
             'invalid-options',
@@ -79,7 +89,11 @@ export async function optimizeImage(
 
     if (
         minQuality !== undefined &&
-        (!Number.isFinite(minQuality) || minQuality <= 0 || minQuality > 1)
+        (
+            !Number.isFinite(minQuality) ||
+            minQuality <= 0 ||
+            minQuality > 1
+        )
     ) {
         throw new ImageOptimizerError(
             'invalid-options',
@@ -87,7 +101,10 @@ export async function optimizeImage(
         );
     }
 
-    if (minQuality !== undefined && minQuality > quality) {
+    if (
+        minQuality !== undefined &&
+        minQuality > quality
+    ) {
         throw new ImageOptimizerError(
             'invalid-options',
             'minQuality must be less than or equal to quality.',
@@ -138,11 +155,26 @@ export async function optimizeImage(
         );
     }
 
-    const { maxWidth, maxHeight } = options.resize ?? {};
+    const {
+        maxWidth,
+        maxHeight,
+    } = options.resize ?? {};
 
     if (
-        (maxWidth !== undefined && (!Number.isFinite(maxWidth) || maxWidth <= 0)) ||
-        (maxHeight !== undefined && (!Number.isFinite(maxHeight) || maxHeight <= 0))
+        (
+            maxWidth !== undefined &&
+            (
+                !Number.isFinite(maxWidth) ||
+                maxWidth <= 0
+            )
+        ) ||
+        (
+            maxHeight !== undefined &&
+            (
+                !Number.isFinite(maxHeight) ||
+                maxHeight <= 0
+            )
+        )
     ) {
         throw new ImageOptimizerError(
             'invalid-options',
@@ -213,6 +245,7 @@ export async function optimizeImage(
 
     const workerResult = await processImage(
         inputFormat,
+        outputFormat,
         inputBuffer,
         quality,
         options.resize,
@@ -249,7 +282,8 @@ export async function optimizeImage(
         },
     );
 
-    const outputIsLarger = outputFile.size >= file.size;
+    const outputIsLarger =
+        outputFile.size >= file.size;
 
     if (outputIsLarger) {
         const result: ImageOptimizationResult = {
@@ -280,7 +314,9 @@ export async function optimizeImage(
                 percent: 0,
             },
             timing: {
-                totalMs: performance.now() - startedAt,
+                totalMs:
+                    performance.now() -
+                    startedAt,
                 decodeMs: workerResult.decodeMs,
                 resizeMs: workerResult.resizeMs,
                 encodeMs: workerResult.encodeMs,
@@ -295,8 +331,11 @@ export async function optimizeImage(
         return result;
     }
 
-    const savedBytes = file.size - outputFile.size;
-    const ratio = outputFile.size / file.size;
+    const savedBytes =
+        file.size - outputFile.size;
+
+    const ratio =
+        outputFile.size / file.size;
 
     const result: ImageOptimizationResult = {
         file: outputFile,
@@ -325,7 +364,9 @@ export async function optimizeImage(
             percent: (1 - ratio) * 100,
         },
         timing: {
-            totalMs: performance.now() - startedAt,
+            totalMs:
+                performance.now() -
+                startedAt,
             decodeMs: workerResult.decodeMs,
             resizeMs: workerResult.resizeMs,
             encodeMs: workerResult.encodeMs,
@@ -341,21 +382,28 @@ export async function optimizeImage(
 }
 
 function processImage(
-    format: ImageFormat,
+    inputFormat: ImageFormat,
+    outputFormat: ImageOutputFormat,
     buffer: ArrayBuffer,
     quality: number,
     resize?: ImageResizeOptions,
     targetSize?: number,
     minQuality?: number,
     signal?: AbortSignal,
-    onStatus?: (status: ImageProcessingStatus) => void,
+    onStatus?: (
+        status: ImageProcessingStatus,
+    ) => void,
 ): Promise<WorkerResult> {
     return new Promise((resolve, reject) => {
-        const worker = createWorker(format);
+        const worker = createWorker();
 
         const handleAbort = () => {
             worker.terminate();
-            signal?.removeEventListener('abort', handleAbort);
+
+            signal?.removeEventListener(
+                'abort',
+                handleAbort,
+            );
 
             reject(
                 new ImageOptimizerError(
@@ -370,11 +418,17 @@ function processImage(
             return;
         }
 
-        signal?.addEventListener('abort', handleAbort, {
-            once: true,
-        });
+        signal?.addEventListener(
+            'abort',
+            handleAbort,
+            {
+                once: true,
+            },
+        );
 
-        worker.onmessage = (event: MessageEvent<WorkerMessage>) => {
+        worker.onmessage = (
+            event: MessageEvent<WorkerMessage>,
+        ) => {
             if (event.data.type === 'status') {
                 emitStatus(onStatus, {
                     stage: event.data.stage,
@@ -385,7 +439,11 @@ function processImage(
             }
 
             if (event.data.type === 'error') {
-                signal?.removeEventListener('abort', handleAbort);
+                signal?.removeEventListener(
+                    'abort',
+                    handleAbort,
+                );
+
                 worker.terminate();
 
                 reject(
@@ -398,19 +456,28 @@ function processImage(
                 return;
             }
 
-            signal?.removeEventListener('abort', handleAbort);
+            signal?.removeEventListener(
+                'abort',
+                handleAbort,
+            );
+
             worker.terminate();
             resolve(event.data);
         };
 
         worker.onerror = (event) => {
-            signal?.removeEventListener('abort', handleAbort);
+            signal?.removeEventListener(
+                'abort',
+                handleAbort,
+            );
+
             worker.terminate();
 
             reject(
                 new ImageOptimizerError(
                     'worker-failed',
-                    event.message || 'Image worker failed.',
+                    event.message ||
+                    'Image worker failed.',
                 ),
             );
         };
@@ -418,17 +485,16 @@ function processImage(
         worker.postMessage(
             {
                 buffer,
-                ...(
-                    (format === 'jpeg' || format === 'webp') && {
-                        quality: quality * 100,
-                        ...(targetSize !== undefined && {
-                            targetSize,
-                        }),
-                        ...(minQuality !== undefined && {
-                            minQuality: minQuality * 100,
-                        }),
-                    }
-                ),
+                inputFormat,
+                outputFormat,
+                quality: quality * 100,
+                ...(targetSize !== undefined && {
+                    targetSize,
+                }),
+                ...(minQuality !== undefined && {
+                    minQuality:
+                        minQuality * 100,
+                }),
                 ...(resize?.maxWidth !== undefined && {
                     maxWidth: resize.maxWidth,
                 }),
@@ -441,38 +507,16 @@ function processImage(
     });
 }
 
-function createWorker(format: ImageFormat): Worker {
-    switch (format) {
-        case 'jpeg':
-            return new Worker(
-                new URL('./jpeg-worker.ts', import.meta.url),
-                {
-                    type: 'module',
-                },
-            );
-
-        case 'png':
-            return new Worker(
-                new URL('./png-worker.ts', import.meta.url),
-                {
-                    type: 'module',
-                },
-            );
-
-        case 'webp':
-            return new Worker(
-                new URL('./webp-worker.ts', import.meta.url),
-                {
-                    type: 'module',
-                },
-            );
-
-        default:
-            throw new ImageOptimizerError(
-                'unsupported-format',
-                `Unsupported image format: ${format}.`,
-            );
-    }
+function createWorker(): Worker {
+    return new Worker(
+        new URL(
+            './image-worker.ts',
+            import.meta.url,
+        ),
+        {
+            type: 'module',
+        },
+    );
 }
 
 function createCompressionResult(
@@ -481,21 +525,28 @@ function createCompressionResult(
 ): ImageOptimizationResult['compression'] {
     return {
         ...(workerResult.finalQuality !== undefined && {
-            quality: workerResult.finalQuality / 100,
+            quality:
+                workerResult.finalQuality / 100,
         }),
-        encodeAttempts: workerResult.encodeAttempts,
+        encodeAttempts:
+        workerResult.encodeAttempts,
         ...(
             options.targetSize !== undefined &&
             workerResult.targetReached !== undefined && {
                 targetSize: options.targetSize,
-                targetReached: workerResult.targetReached,
+                targetReached:
+                workerResult.targetReached,
             }
         ),
     };
 }
 
 function emitStatus(
-    onStatus: ((status: ImageProcessingStatus) => void) | undefined,
+    onStatus:
+        | ((
+        status: ImageProcessingStatus,
+    ) => void)
+        | undefined,
     status: ImageProcessingStatus,
 ): void {
     onStatus?.(status);
