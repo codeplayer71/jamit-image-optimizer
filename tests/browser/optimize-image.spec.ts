@@ -150,3 +150,24 @@ test('detects real JPEG content with missing or incorrect MIME types', async ({
         failedOptimizations: 0,
     });
 });
+
+test('enforces image resource limits in the real browser worker', async ({
+                                                                             page,
+                                                                         }) => {
+    await page.goto(
+        '/browser-test.html',
+    );
+
+    const result =
+        await page.evaluate(async () => {
+            return window
+                .runResourceLimitTest();
+        });
+
+    expect(result).toEqual({
+        dimensionErrorCode:
+            'resource-limit-exceeded',
+        pixelErrorCode:
+            'resource-limit-exceeded',
+    });
+});

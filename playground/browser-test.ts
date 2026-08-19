@@ -45,6 +45,11 @@ type BrowserSignatureResult = {
     failedOptimizations: number;
 };
 
+type BrowserResourceLimitResult = {
+    dimensionErrorCode: string | null;
+    pixelErrorCode: string | null;
+};
+
 declare global {
     interface Window {
         runImageOptimizationTest:
@@ -61,6 +66,9 @@ declare global {
 
         runSignatureDetectionTest:
             () => Promise<BrowserSignatureResult>;
+
+        runResourceLimitTest:
+            () => Promise<BrowserResourceLimitResult>;
     }
 }
 
@@ -468,6 +476,37 @@ window.runSignatureDetectionTest =
         };
     };
 
+window.runResourceLimitTest =
+    async (): Promise<BrowserResourceLimitResult> => {
+        const file = await createImageFile(
+            'resource-limit.jpg',
+            'image/jpeg',
+            200,
+            100,
+        );
+
+        const dimensionErrorCode =
+            await getOptimizationErrorCode(
+                file,
+                {
+                    maxDimension: 150,
+                },
+            );
+
+        const pixelErrorCode =
+            await getOptimizationErrorCode(
+                file,
+                {
+                    maxPixels: 10_000,
+                },
+            );
+
+        return {
+            dimensionErrorCode,
+            pixelErrorCode,
+        };
+    };
+
 async function createImageFile(
     name: string,
     type: 'image/jpeg' | 'image/png',
@@ -551,4 +590,36 @@ async function createImageFile(
             type,
         },
     );
+}
+
+async function getOptimizationErrorCode(
+    file: File,
+    limits: {
+        maxDimension?: number;
+        maxPixels?: number;
+    },
+): Promise<string | null> {
+    try {
+        await optimizeImage(
+            file,
+            {
+                mode: 'format',
+                format: 'webp',
+                limits,
+            },
+        );
+
+        return null;
+    } catch (error) {
+        if (
+            typeof error === 'object' &&
+            error !== null &&
+            'code' in error &&
+            typeof error.code === 'string'
+        ) {
+            return error.code;
+        }
+
+        return null;
+    }
 }
