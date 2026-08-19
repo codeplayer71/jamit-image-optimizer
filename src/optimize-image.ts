@@ -117,11 +117,12 @@ export async function optimizeImage(
 
     if (
         mode !== 'original' &&
-        mode !== 'format'
+        mode !== 'format' &&
+        mode !== 'auto'
     ) {
         throw new ImageOptimizerError(
             'invalid-options',
-            'mode must be either "original" or "format".',
+            'mode must be either "original", "format", or "auto".',
         );
     }
 
@@ -148,12 +149,12 @@ export async function optimizeImage(
     }
 
     if (
-        mode === 'original' &&
+        mode !== 'format' &&
         options.format !== undefined
     ) {
         throw new ImageOptimizerError(
             'invalid-options',
-            'format cannot be used when mode is "original".',
+            'format can only be used when mode is "format".',
         );
     }
 
@@ -267,7 +268,7 @@ export async function optimizeImage(
     );
 
     const shouldKeepOriginal =
-        mode === 'original' &&
+        mode !== 'format' &&
         outputFile.size >= file.size;
 
     if (shouldKeepOriginal) {

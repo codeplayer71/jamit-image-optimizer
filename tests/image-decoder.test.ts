@@ -176,4 +176,42 @@ describe('decodeImage', () => {
             code: 'codec-not-supported',
         });
     });
+
+    it('throws codec-not-supported when HEIF cannot be decoded natively', async () => {
+        vi.mocked(
+            tryDecodeHeicNative,
+        ).mockResolvedValue(null);
+
+        await expect(
+            decodeImage(
+                new ArrayBuffer(4),
+                'heif',
+            ),
+        ).rejects.toMatchObject({
+            name: 'ImageOptimizerError',
+            code: 'codec-not-supported',
+        });
+    });
+
+    it('decodes HEIF through the native decoder', async () => {
+        vi.mocked(
+            tryDecodeHeicNative,
+        ).mockResolvedValue(imageData);
+
+        const buffer = new ArrayBuffer(4);
+
+        await expect(
+            decodeImage(
+                buffer,
+                'heif',
+            ),
+        ).resolves.toBe(imageData);
+
+        expect(
+            tryDecodeHeicNative,
+        ).toHaveBeenCalledWith(
+            buffer,
+            'image/heif',
+        );
+    });
 });

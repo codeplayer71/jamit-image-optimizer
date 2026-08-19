@@ -55,4 +55,24 @@ describe('resolveOutputFormat', () => {
             ).toBeNull();
         },
     );
+
+    it.each([
+        'jpeg',
+        'png',
+        'webp',
+        'heic',
+        'heif',
+    ] as const)(
+        'uses WebP as the automatic output candidate for %s',
+        (inputFormat) => {
+            expect(
+                resolveOutputFormat(
+                    inputFormat,
+                    {
+                        mode: 'auto',
+                    },
+                ),
+            ).toBe('webp');
+        },
+    );
 });

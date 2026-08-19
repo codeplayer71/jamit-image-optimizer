@@ -687,4 +687,119 @@ describe('optimizeImage result', () => {
         expect(result.converted).toBe(true);
         expect(result.changed).toBe(true);
     });
+
+    it('keeps the original file in auto mode when WebP is larger', async () => {
+        vi.stubGlobal(
+            'Worker',
+            class extends WorkerMock {
+                override postMessage(): void {
+                    this.onmessage?.({
+                        data: {
+                            type: 'result',
+                            buffer: new ArrayBuffer(8),
+                            originalWidth: 200,
+                            originalHeight: 100,
+                            outputWidth: 200,
+                            outputHeight: 100,
+                            decodeMs: 10,
+                            resizeMs: 0,
+                            encodeMs: 20,
+                            finalQuality: 80,
+                            encodeAttempts: 1,
+                        },
+                    } as MessageEvent);
+                }
+            },
+        );
+
+        const file = new File(
+            [new Uint8Array(4)],
+            'photo.jpg',
+            {
+                type: 'image/jpeg',
+            },
+        );
+
+        const result = await optimizeImage(file, {
+            mode: 'auto',
+        });
+
+        expect(result.file).toBe(file);
+
+        expect(result.optimized).toBe(false);
+        expect(result.converted).toBe(false);
+        expect(result.changed).toBe(false);
+
+        expect(result.reason).toBe(
+            'output-larger-than-input',
+        );
+
+        expect(result.savings).toEqual({
+            bytes: 0,
+            ratio: 0,
+            percent: 0,
+        });
+
+        expect(result.sizeChange).toEqual({
+            bytes: 0,
+            ratio: 0,
+            percent: 0,
+        });
+    });
+
+    it('returns WebP in auto mode when WebP is smaller', async () => {
+        vi.stubGlobal(
+            'Worker',
+            class extends WorkerMock {
+                override postMessage(): void {
+                    this.onmessage?.({
+                        data: {
+                            type: 'result',
+                            buffer: new ArrayBuffer(2),
+                            originalWidth: 200,
+                            originalHeight: 100,
+                            outputWidth: 200,
+                            outputHeight: 100,
+                            decodeMs: 10,
+                            resizeMs: 0,
+                            encodeMs: 20,
+                            finalQuality: 80,
+                            encodeAttempts: 1,
+                        },
+                    } as MessageEvent);
+                }
+            },
+        );
+
+        const file = new File(
+            [new Uint8Array(4)],
+            'photo.jpg',
+            {
+                type: 'image/jpeg',
+            },
+        );
+
+        const result = await optimizeImage(file, {
+            mode: 'auto',
+        });
+
+        expect(result.file.name).toBe('photo.webp');
+        expect(result.file.type).toBe('image/webp');
+
+        expect(result.optimized).toBe(true);
+        expect(result.converted).toBe(true);
+        expect(result.changed).toBe(true);
+
+        expect(result.savings).toEqual({
+            bytes: 2,
+            ratio: 0.5,
+            percent: 50,
+        });
+
+        expect(result.sizeChange).toEqual({
+            bytes: -2,
+            ratio: -0.5,
+            percent: -50,
+        });
+    });
 });

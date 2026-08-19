@@ -151,4 +151,23 @@ describe('optimizeImage options', () => {
             code: 'invalid-options',
         });
     });
+
+    it('rejects format when mode is auto', async () => {
+        const file = new File(
+            [new Uint8Array(4)],
+            'photo.jpg',
+            {
+                type: 'image/jpeg',
+            },
+        );
+
+        await expect(
+            optimizeImage(file, {
+                mode: 'auto',
+                format: 'webp',
+            }),
+        ).rejects.toMatchObject({
+            code: 'invalid-options',
+        });
+    });
 });

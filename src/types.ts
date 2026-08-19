@@ -133,4 +133,5 @@ export type ImageOutputFormat =
 
 export type ImageOutputMode =
     | 'original'
-    | 'format';
+    | 'format'
+    | 'auto';

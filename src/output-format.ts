@@ -19,6 +19,10 @@ export function resolveOutputFormat(
         return options.format ?? null;
     }
 
+    if (mode === 'auto') {
+        return 'webp';
+    }
+
     switch (inputFormat) {
         case 'jpeg':
         case 'png':
