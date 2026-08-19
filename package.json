@@ -7,11 +7,13 @@
   "scripts": {
     "dev": "vite playground",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage",
+    "test": "vitest run --exclude \"tests/browser/**\"",
+    "test:watch": "vitest --exclude \"tests/browser/**\"",
+    "test:coverage": "vitest run --coverage --exclude \"tests/browser/**\"",
     "build:playground": "vite build playground",
-    "preview:playground": "vite preview playground"
+    "preview:playground": "vite preview playground",
+    "test:browser": "playwright test",
+    "test:all": "pnpm test && pnpm test:browser"
   },
   "keywords": [
     "image",
