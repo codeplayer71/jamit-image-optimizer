@@ -8,6 +8,7 @@ export type FileClassification =
 const SUPPORTED_PROCESSING_FORMATS = new Set([
     'jpeg',
     'png',
+    'webp',
 ]);
 
 export function classifyFile(file: File): FileClassification {

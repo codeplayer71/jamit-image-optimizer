@@ -12,7 +12,6 @@ describe('classifyFile', () => {
     });
 
     it.each([
-        'image/webp',
         'image/heic',
         'image/heif',
         'image/gif',
@@ -46,6 +45,14 @@ describe('classifyFile', () => {
     it('classifies PNG as a supported image', () => {
         const file = new File([], 'photo.png', {
             type: 'image/png',
+        });
+
+        expect(classifyFile(file)).toBe('supported-image');
+    });
+
+    it('classifies WebP as a supported image', () => {
+        const file = new File([], 'photo.webp', {
+            type: 'image/webp',
         });
 
         expect(classifyFile(file)).toBe('supported-image');

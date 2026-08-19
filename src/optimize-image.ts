@@ -109,7 +109,11 @@ export async function optimizeImage(
 
     const format = getImageFormat(file);
 
-    if (format !== 'jpeg' && format !== 'png') {
+    if (
+        format !== 'jpeg' &&
+        format !== 'png' &&
+        format !== 'webp'
+    ) {
         throw new ImageOptimizerError(
             'unsupported-format',
             `Unsupported image format: ${file.type || 'unknown'}.`,
@@ -321,8 +325,12 @@ function processImage(
         worker.postMessage(
             {
                 buffer,
+                ...(
+                    (format === 'jpeg' || format === 'webp') && {
+                        quality: quality * 100,
+                    }
+                ),
                 ...(format === 'jpeg' && {
-                    quality: quality * 100,
                     ...(targetSize !== undefined && {
                         targetSize,
                     }),
@@ -355,6 +363,14 @@ function createWorker(format: ImageFormat): Worker {
         case 'png':
             return new Worker(
                 new URL('./png-worker.ts', import.meta.url),
+                {
+                    type: 'module',
+                },
+            );
+
+        case 'webp':
+            return new Worker(
+                new URL('./webp-worker.ts', import.meta.url),
                 {
                     type: 'module',
                 },

@@ -51,11 +51,11 @@ describe('processFiles', () => {
             },
         );
 
-        const webp = new File(
+        const heic = new File(
             [new Uint8Array(2)],
-            'floorplan.webp',
+            'floorplan.heic',
             {
-                type: 'image/webp',
+                type: 'image/heic',
             },
         );
 
@@ -67,7 +67,7 @@ describe('processFiles', () => {
             },
         );
 
-        const input = [jpeg, pdf, webp, text];
+        const input = [jpeg, pdf, heic, text];
 
         const result = await processFiles(input);
 
@@ -75,7 +75,7 @@ describe('processFiles', () => {
 
         expect(result.files[0]).not.toBe(jpeg);
         expect(result.files[1]).toBe(pdf);
-        expect(result.files[2]).toBe(webp);
+        expect(result.files[2]).toBe(heic);
         expect(result.files[3]).toBe(text);
 
         expect(result.items.map((item) => item.index)).toEqual([
