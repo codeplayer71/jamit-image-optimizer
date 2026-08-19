@@ -31,6 +31,12 @@ type BrowserConcurrencyResult = {
     processedImages: number;
 };
 
+type BrowserAbortResult = {
+    code: string | null;
+    createdWorkers: number;
+    terminatedWorkers: number;
+};
+
 declare global {
     interface Window {
         runImageOptimizationTest:
@@ -41,6 +47,9 @@ declare global {
 
         runConcurrencyTest:
             () => Promise<BrowserConcurrencyResult>;
+
+        runAbortTest:
+            () => Promise<BrowserAbortResult>;
     }
 }
 
@@ -265,6 +274,114 @@ window.runConcurrencyTest =
                     result.summary
                         .changedFiles,
             };
+        } finally {
+            window.Worker = NativeWorker;
+        }
+    };
+
+window.runAbortTest =
+    async (): Promise<BrowserAbortResult> => {
+        const NativeWorker = window.Worker;
+
+        let createdWorkers = 0;
+        let terminatedWorkers = 0;
+
+        let resolveWorkerCreated!: () => void;
+
+        const workerCreated =
+            new Promise<void>((resolve) => {
+                resolveWorkerCreated = resolve;
+            });
+
+        const TrackingWorker = new Proxy(
+            NativeWorker,
+            {
+                construct(
+                    Target,
+                    args,
+                ) {
+                    const worker = Reflect.construct(
+                        Target,
+                        args,
+                        Target,
+                    ) as Worker;
+
+                    createdWorkers += 1;
+
+                    const nativeTerminate =
+                        worker.terminate.bind(
+                            worker,
+                        );
+
+                    worker.terminate = () => {
+                        terminatedWorkers += 1;
+                        nativeTerminate();
+                    };
+
+                    resolveWorkerCreated();
+
+                    return worker;
+                },
+            },
+        );
+
+        window.Worker =
+            TrackingWorker as typeof Worker;
+
+        try {
+            const file = await createImageFile(
+                'abort-test.jpg',
+                'image/jpeg',
+                2_400,
+                1_800,
+            );
+
+            const controller =
+                new AbortController();
+
+            const promise = optimizeImage(
+                file,
+                {
+                    mode: 'format',
+                    format: 'webp',
+                    quality: 0.8,
+                    resize: {
+                        maxWidth: 1_920,
+                        maxHeight: 1_920,
+                    },
+                    signal:
+                    controller.signal,
+                },
+            );
+
+            await workerCreated;
+
+            controller.abort();
+
+            try {
+                await promise;
+
+                return {
+                    code: null,
+                    createdWorkers,
+                    terminatedWorkers,
+                };
+            } catch (error) {
+                const code =
+                    typeof error === 'object' &&
+                    error !== null &&
+                    'code' in error &&
+                    typeof error.code ===
+                    'string'
+                        ? error.code
+                        : null;
+
+                return {
+                    code,
+                    createdWorkers,
+                    terminatedWorkers,
+                };
+            }
         } finally {
             window.Worker = NativeWorker;
         }

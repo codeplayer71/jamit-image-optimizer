@@ -93,3 +93,23 @@ test('limits real browser worker concurrency', async ({
         processedImages: 3,
     });
 });
+
+test('aborts and terminates an active browser worker', async ({
+                                                                  page,
+                                                              }) => {
+    await page.goto(
+        '/browser-test.html',
+    );
+
+    const result =
+        await page.evaluate(async () => {
+            return window
+                .runAbortTest();
+        });
+
+    expect(result).toEqual({
+        code: 'aborted',
+        createdWorkers: 1,
+        terminatedWorkers: 1,
+    });
+});
