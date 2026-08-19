@@ -52,7 +52,7 @@
     "typescript"
   ],
   "author": "JamIT",
-  "license": "ISC",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/codeplayer71/jamit-image-optimizer.git"

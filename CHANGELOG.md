@@ -75,4 +75,4 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 - Visible validation and processing error messages
 - Playground reset functionality
 - Public package documentation
-- ISC license
+- MIT license

@@ -1033,7 +1033,7 @@ Non-image files are simply useful participants in mixed batches because real upl
 
 ## License
 
-ISC
+MIT
 
 ## Author
 
