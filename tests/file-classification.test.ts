@@ -1,48 +1,161 @@
 import { describe, expect, it } from 'vitest';
 
 import { classifyFile } from '../src/file-classification';
+import { createTestImageFile } from './test-image-files';
 
 describe('classifyFile', () => {
     it.each([
-        'image/jpeg',
-        'image/png',
-        'image/webp',
+        'jpeg',
+        'png',
+        'webp',
+    ] as const)(
+        'classifies %s content as a supported image',
+        async (format) => {
+            const file = createTestImageFile(
+                format,
+            );
+
+            await expect(
+                classifyFile(file),
+            ).resolves.toBe(
+                'supported-image',
+            );
+        },
+    );
+
+    it.each([
         'image/heic',
         'image/heif',
-    ])('classifies %s as a supported image', (type) => {
-        const file = new File([], 'image', {
-            type,
-        });
+    ])(
+        'classifies %s as a supported image',
+        async (type) => {
+            const file = new File(
+                [new Uint8Array(4)],
+                'photo',
+                {
+                    type,
+                },
+            );
 
-        expect(classifyFile(file)).toBe('supported-image');
-    });
+            await expect(
+                classifyFile(file),
+            ).resolves.toBe(
+                'supported-image',
+            );
+        },
+    );
 
     it.each([
         'image/gif',
         'image/svg+xml',
-    ])('classifies %s as an unsupported image', (type) => {
-        const file = new File([], 'image', {
-            type,
-        });
+    ])(
+        'classifies %s as an unsupported image',
+        async (type) => {
+            const file = new File(
+                [new Uint8Array(4)],
+                'image',
+                {
+                    type,
+                },
+            );
 
-        expect(classifyFile(file)).toBe('unsupported-image');
-    });
+            await expect(
+                classifyFile(file),
+            ).resolves.toBe(
+                'unsupported-image',
+            );
+        },
+    );
 
     it.each([
         'application/pdf',
         'video/mp4',
         'text/plain',
-    ])('classifies %s as passthrough', (type) => {
-        const file = new File([], 'file', {
-            type,
-        });
+    ])(
+        'classifies %s as passthrough',
+        async (type) => {
+            const file = new File(
+                [new Uint8Array(4)],
+                'file',
+                {
+                    type,
+                },
+            );
 
-        expect(classifyFile(file)).toBe('passthrough');
+            await expect(
+                classifyFile(file),
+            ).resolves.toBe(
+                'passthrough',
+            );
+        },
+    );
+
+    it('treats an empty MIME type without a known image signature as passthrough', async () => {
+        const file = new File(
+            [new Uint8Array(4)],
+            'unknown',
+        );
+
+        await expect(
+            classifyFile(file),
+        ).resolves.toBe(
+            'passthrough',
+        );
     });
 
-    it('treats an empty MIME type conservatively as passthrough', () => {
-        const file = new File([], 'unknown');
+    it('detects an image from its signature when the MIME type is empty', async () => {
+        const file = createTestImageFile(
+            'jpeg',
+            {
+                name: 'photo',
+                type: '',
+            },
+        );
 
-        expect(classifyFile(file)).toBe('passthrough');
+        await expect(
+            classifyFile(file),
+        ).resolves.toBe(
+            'supported-image',
+        );
+    });
+
+    it('detects an image from its signature when the MIME type is incorrect', async () => {
+        const file = createTestImageFile(
+            'webp',
+            {
+                name: 'photo.bin',
+                type:
+                    'application/octet-stream',
+            },
+        );
+
+        await expect(
+            classifyFile(file),
+        ).resolves.toBe(
+            'supported-image',
+        );
+    });
+
+    it('does not trust a JPEG MIME type when the content is not recognized', async () => {
+        const file = new File(
+            [
+                new Uint8Array([
+                    0x01,
+                    0x02,
+                    0x03,
+                    0x04,
+                ]),
+            ],
+            'photo.jpg',
+            {
+                type: 'image/jpeg',
+            },
+        );
+
+        await expect(
+            classifyFile(file),
+        ).resolves.toBe(
+            'unsupported-image',
+        );
     });
 });

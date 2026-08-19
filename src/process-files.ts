@@ -35,14 +35,44 @@ export async function processFiles(
         );
     }
 
-    const items = new Array<FileProcessingItemResult | undefined>(
-        inputFiles.length,
+    if (options.signal?.aborted) {
+        throw new ImageOptimizerError(
+            'aborted',
+            'Image optimization was aborted.',
+        );
+    }
+
+    const classifications = await Promise.all(
+        inputFiles.map((file) => classifyFile(file)),
     );
+
+    if (options.signal?.aborted) {
+        throw new ImageOptimizerError(
+            'aborted',
+            'Image optimization was aborted.',
+        );
+    }
+
+    const items = new Array<
+        FileProcessingItemResult | undefined
+    >(inputFiles.length);
 
     const imageJobs: ImageJob[] = [];
 
-    for (const [index, file] of inputFiles.entries()) {
-        const classification = classifyFile(file);
+    for (
+        let index = 0;
+        index < inputFiles.length;
+        index += 1
+    ) {
+        const file = inputFiles[index];
+        const classification =
+            classifications[index];
+
+        if (!file || !classification) {
+            throw new Error(
+                `Missing file classification for index ${index}.`,
+            );
+        }
 
         if (classification === 'passthrough') {
             items[index] = {
@@ -57,7 +87,10 @@ export async function processFiles(
             continue;
         }
 
-        if (classification === 'unsupported-image') {
+        if (
+            classification ===
+            'unsupported-image'
+        ) {
             items[index] = {
                 index,
                 originalFile: file,
@@ -76,124 +109,164 @@ export async function processFiles(
         });
     }
 
-    const processedImages = await mapWithConcurrency(
-        imageJobs,
-        concurrency,
-        async ({ index, file }): Promise<FileProcessingItemResult> => {
-            try {
-                const optimization = await optimizeImage(file, options);
+    const processedImages =
+        await mapWithConcurrency(
+            imageJobs,
+            concurrency,
+            async ({
+                       index,
+                       file,
+                   }): Promise<FileProcessingItemResult> => {
+                try {
+                    const optimization =
+                        await optimizeImage(
+                            file,
+                            options,
+                        );
 
-                return {
-                    index,
-                    originalFile: file,
-                    file: optimization.file,
-                    kind: 'image',
-                    outcome: optimization.optimized
-                        ? 'optimized'
-                        : optimization.changed
-                            ? 'changed'
-                            : 'unchanged',
-                    ...(optimization.reason !== undefined && {
-                        reason: optimization.reason,
-                    }),
-                    optimization,
-                } satisfies FileProcessingItemResult;
-            } catch (error) {
-                if (
-                    errorMode === 'throw' ||
-                    !isImageOptimizerError(error) ||
-                    error.code === 'aborted'
-                ) {
-                    throw error;
-                }
+                    return {
+                        index,
+                        originalFile: file,
+                        file: optimization.file,
+                        kind: 'image',
+                        outcome:
+                            optimization.optimized
+                                ? 'optimized'
+                                : optimization.changed
+                                    ? 'changed'
+                                    : 'unchanged',
+                        ...(
+                            optimization.reason !==
+                            undefined && {
+                                reason:
+                                optimization.reason,
+                            }
+                        ),
+                        optimization,
+                    } satisfies FileProcessingItemResult;
+                } catch (error) {
+                    if (
+                        errorMode === 'throw' ||
+                        !isImageOptimizerError(
+                            error,
+                        ) ||
+                        error.code === 'aborted'
+                    ) {
+                        throw error;
+                    }
 
-                if (error.code === 'unsupported-format') {
+                    if (
+                        error.code ===
+                        'unsupported-format'
+                    ) {
+                        return {
+                            index,
+                            originalFile: file,
+                            file,
+                            kind: 'image',
+                            outcome: 'unchanged',
+                            reason:
+                                'unsupported-image-format',
+                        };
+                    }
+
+                    if (
+                        error.code ===
+                        'codec-not-supported'
+                    ) {
+                        return {
+                            index,
+                            originalFile: file,
+                            file,
+                            kind: 'image',
+                            outcome: 'unchanged',
+                            reason:
+                                'codec-not-supported',
+                        };
+                    }
+
+                    if (
+                        error.code ===
+                        'transparency-not-supported'
+                    ) {
+                        return {
+                            index,
+                            originalFile: file,
+                            file,
+                            kind: 'image',
+                            outcome: 'unchanged',
+                            reason:
+                                'transparency-not-supported',
+                        };
+                    }
+
+                    if (
+                        error.code ===
+                        'resource-limit-exceeded'
+                    ) {
+                        return {
+                            index,
+                            originalFile: file,
+                            file,
+                            kind: 'image',
+                            outcome: 'unchanged',
+                            reason:
+                                'resource-limit-exceeded',
+                        };
+                    }
+
                     return {
                         index,
                         originalFile: file,
                         file,
                         kind: 'image',
-                        outcome: 'unchanged',
-                        reason: 'unsupported-image-format',
-                    };
+                        outcome:
+                            'failed-passthrough',
+                        reason:
+                            'optimization-failed',
+                        error,
+                    } satisfies FileProcessingItemResult;
                 }
-
-                if (error.code === 'codec-not-supported') {
-                    return {
-                        index,
-                        originalFile: file,
-                        file,
-                        kind: 'image',
-                        outcome: 'unchanged',
-                        reason: 'codec-not-supported',
-                    };
-                }
-
-                if (error.code === 'transparency-not-supported') {
-                    return {
-                        index,
-                        originalFile: file,
-                        file,
-                        kind: 'image',
-                        outcome: 'unchanged',
-                        reason: 'transparency-not-supported',
-                    };
-                }
-
-                if (error.code === 'resource-limit-exceeded') {
-                    return {
-                        index,
-                        originalFile: file,
-                        file,
-                        kind: 'image',
-                        outcome: 'unchanged',
-                        reason: 'resource-limit-exceeded',
-                    };
-                }
-
-                return {
-                    index,
-                    originalFile: file,
-                    file,
-                    kind: 'image',
-                    outcome: 'failed-passthrough',
-                    reason: 'optimization-failed',
-                    error,
-                } satisfies FileProcessingItemResult;
-            }
-        },
-    );
+            },
+        );
 
     for (const item of processedImages) {
         items[item.index] = item;
     }
 
-    const completeItems = items.map((item, index) => {
-        if (!item) {
-            throw new Error(
-                `Missing processing result for file at index ${index}.`,
-            );
-        }
+    const completeItems = items.map(
+        (item, index) => {
+            if (!item) {
+                throw new Error(
+                    `Missing processing result for file at index ${index}.`,
+                );
+            }
 
-        return item;
-    });
+            return item;
+        },
+    );
 
-    const resultFiles = completeItems.map((item) => item.file);
+    const resultFiles = completeItems.map(
+        (item) => item.file,
+    );
 
     const originalBytes = inputFiles.reduce(
-        (total, file) => total + file.size,
+        (total, file) =>
+            total + file.size,
         0,
     );
 
     const outputBytes = resultFiles.reduce(
-        (total, file) => total + file.size,
+        (total, file) =>
+            total + file.size,
         0,
     );
 
-    const sizeMetrics = calculateSizeMetrics(
-        originalBytes,
-        outputBytes,
-    );
+    const sizeMetrics =
+        calculateSizeMetrics(
+            originalBytes,
+            outputBytes,
+        );
 
     return {
         files: resultFiles,
@@ -201,24 +274,39 @@ export async function processFiles(
         summary: {
             totalFiles: inputFiles.length,
             imageFiles: completeItems.filter(
-                (item) => item.kind === 'image',
+                (item) =>
+                    item.kind === 'image',
             ).length,
-            optimizedFiles: completeItems.filter(
-                (item) => item.outcome === 'optimized',
+            optimizedFiles:
+            completeItems.filter(
+                (item) =>
+                    item.outcome ===
+                    'optimized',
             ).length,
-            changedFiles: completeItems.filter(
-                (item) => item.outcome === 'changed',
+            changedFiles:
+            completeItems.filter(
+                (item) =>
+                    item.outcome ===
+                    'changed',
             ).length,
-            unchangedFiles: completeItems.filter(
-                (item) => item.outcome === 'unchanged',
+            unchangedFiles:
+            completeItems.filter(
+                (item) =>
+                    item.outcome ===
+                    'unchanged',
             ).length,
-            failedOptimizations: completeItems.filter(
-                (item) => item.outcome === 'failed-passthrough',
+            failedOptimizations:
+            completeItems.filter(
+                (item) =>
+                    item.outcome ===
+                    'failed-passthrough',
             ).length,
             originalBytes,
             outputBytes,
-            savings: sizeMetrics.savings,
-            sizeChange: sizeMetrics.sizeChange,
+            savings:
+            sizeMetrics.savings,
+            sizeChange:
+            sizeMetrics.sizeChange,
         },
     };
 }

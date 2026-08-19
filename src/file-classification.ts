@@ -1,28 +1,56 @@
 import { getImageFormat } from './image-format';
+import { detectImageFormatFromBytes } from './image-signature';
 
 export type FileClassification =
     | 'supported-image'
     | 'unsupported-image'
     | 'passthrough';
 
-const SUPPORTED_PROCESSING_FORMATS = new Set([
-    'jpeg',
-    'png',
-    'webp',
-    'heic',
-    'heif',
-]);
+const IMAGE_SIGNATURE_BYTES = 12;
 
-export function classifyFile(file: File): FileClassification {
-    const format = getImageFormat(file);
+export async function classifyFile(
+    file: File,
+): Promise<FileClassification> {
+    const signatureFormat =
+        await detectFileSignatureFormat(file);
 
-    if (format && SUPPORTED_PROCESSING_FORMATS.has(format)) {
+    if (signatureFormat) {
         return 'supported-image';
     }
 
-    if (format || file.type.startsWith('image/')) {
+    const mimeFormat = getImageFormat(file);
+
+    if (
+        mimeFormat === 'heic' ||
+        mimeFormat === 'heif'
+    ) {
+        return 'supported-image';
+    }
+
+    if (
+        mimeFormat ||
+        file.type.startsWith('image/')
+    ) {
         return 'unsupported-image';
     }
 
     return 'passthrough';
+}
+
+async function detectFileSignatureFormat(
+    file: File,
+): Promise<
+    ReturnType<typeof detectImageFormatFromBytes>
+> {
+    try {
+        const buffer = await file
+            .slice(0, IMAGE_SIGNATURE_BYTES)
+            .arrayBuffer();
+
+        return detectImageFormatFromBytes(
+            buffer,
+        );
+    } catch {
+        return null;
+    }
 }
