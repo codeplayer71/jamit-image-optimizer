@@ -39,6 +39,8 @@ export type ImageOptimizationSkipReason =
 export type ImageOptimizationResult = {
     file: File;
     optimized: boolean;
+    converted: boolean;
+    changed: boolean;
     reason?: ImageOptimizationSkipReason;
 
     original: {
@@ -77,6 +79,7 @@ export type ImageOptimizationResult = {
 
 export type FileProcessingOutcome =
     | 'optimized'
+    | 'changed'
     | 'unchanged'
     | 'failed-passthrough';
 
@@ -99,6 +102,7 @@ export type FileProcessingBatchSummary = {
     totalFiles: number;
     imageFiles: number;
     optimizedFiles: number;
+    changedFiles: number;
     unchangedFiles: number;
     failedOptimizations: number;
     originalBytes: number;

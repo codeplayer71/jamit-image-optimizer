@@ -290,6 +290,8 @@ export async function optimizeImage(
         const result: ImageOptimizationResult = {
             file,
             optimized: false,
+            converted: false,
+            changed: false,
             reason: 'output-larger-than-input',
             original: {
                 name: file.name,
@@ -334,9 +336,17 @@ export async function optimizeImage(
         outputFile.size,
     );
 
+    const optimized =
+        outputFile.size < file.size;
+
+    const converted =
+        outputFormat !== inputFormat;
+
     const result: ImageOptimizationResult = {
         file: outputFile,
-        optimized: true,
+        optimized,
+        converted,
+        changed: true,
         original: {
             name: file.name,
             type: file.type,

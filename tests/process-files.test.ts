@@ -102,6 +102,7 @@ describe('processFiles', () => {
             totalFiles: 4,
             imageFiles: 2,
             optimizedFiles: 1,
+            changedFiles: 0,
             unchangedFiles: 3,
             failedOptimizations: 0,
             originalBytes: 10,

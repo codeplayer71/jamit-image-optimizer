@@ -90,7 +90,9 @@ export async function processFiles(
                     kind: 'image',
                     outcome: optimization.optimized
                         ? 'optimized'
-                        : 'unchanged',
+                        : optimization.changed
+                            ? 'changed'
+                            : 'unchanged',
                     ...(optimization.reason !== undefined && {
                         reason: optimization.reason,
                     }),
@@ -192,6 +194,9 @@ export async function processFiles(
             ).length,
             optimizedFiles: completeItems.filter(
                 (item) => item.outcome === 'optimized',
+            ).length,
+            changedFiles: completeItems.filter(
+                (item) => item.outcome === 'changed',
             ).length,
             unchangedFiles: completeItems.filter(
                 (item) => item.outcome === 'unchanged',

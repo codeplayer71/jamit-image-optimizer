@@ -601,7 +601,9 @@ describe('optimizeImage result', () => {
             format: 'png',
         });
 
-        expect(result.optimized).toBe(true);
+        expect(result.optimized).toBe(false);
+        expect(result.converted).toBe(true);
+        expect(result.changed).toBe(true);
 
         expect(result.file.name).toBe('photo.png');
         expect(result.file.type).toBe('image/png');
