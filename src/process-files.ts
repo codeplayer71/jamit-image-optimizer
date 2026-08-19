@@ -78,7 +78,7 @@ export async function processFiles(
     const processedImages = await mapWithConcurrency(
         imageJobs,
         concurrency,
-        async ({ index, file }) => {
+        async ({ index, file }): Promise<FileProcessingItemResult> => {
             try {
                 const optimization = await optimizeImage(file, options);
 
@@ -112,7 +112,18 @@ export async function processFiles(
                         kind: 'image',
                         outcome: 'unchanged',
                         reason: 'unsupported-image-format',
-                    } satisfies FileProcessingItemResult;
+                    };
+                }
+
+                if (error.code === 'codec-not-supported') {
+                    return {
+                        index,
+                        originalFile: file,
+                        file,
+                        kind: 'image',
+                        outcome: 'unchanged',
+                        reason: 'codec-not-supported',
+                    };
                 }
 
                 return {

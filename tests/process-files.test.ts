@@ -438,4 +438,55 @@ describe('processFiles', () => {
 
         expect(result.summary.failedOptimizations).toBe(0);
     });
+
+    it('passes an image through unchanged when its codec is not supported', async () => {
+        vi.stubGlobal(
+            'Worker',
+            class {
+                onmessage: ((event: MessageEvent) => void) | null = null;
+                onerror: ((event: ErrorEvent) => void) | null = null;
+
+                postMessage(): void {
+                    this.onmessage?.({
+                        data: {
+                            type: 'error',
+                            code: 'codec-not-supported',
+                            message: 'The required image codec is not supported.',
+                        },
+                    } as MessageEvent);
+                }
+
+                terminate(): void {}
+            },
+        );
+
+        const image = new File(
+            [new Uint8Array(4)],
+            'photo.jpg',
+            {
+                type: 'image/jpeg',
+            },
+        );
+
+        const result = await processFiles([image]);
+
+        expect(result.files[0]).toBe(image);
+
+        expect(result.items[0]).toMatchObject({
+            index: 0,
+            originalFile: image,
+            file: image,
+            kind: 'image',
+            outcome: 'unchanged',
+            reason: 'codec-not-supported',
+        });
+
+        expect(result.summary).toMatchObject({
+            totalFiles: 1,
+            imageFiles: 1,
+            optimizedFiles: 0,
+            unchangedFiles: 1,
+            failedOptimizations: 0,
+        });
+    });
 });

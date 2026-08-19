@@ -20,6 +20,8 @@ export type {
     ImageProcessingStage,
     ImageProcessingStatus,
     ImageResizeOptions,
+    ImageOutputFormat,
+    ImageOutputMode,
     ProcessFilesOptions,
 } from './types';
 

@@ -25,6 +25,8 @@ export type ImageOptimizationOptions = {
     resize?: ImageResizeOptions;
     signal?: AbortSignal;
     onStatus?: (status: ImageProcessingStatus) => void;
+    mode?: ImageOutputMode;
+    format?: ImageOutputFormat;
 };
 
 export type ImageOptimizationSkipReason =
@@ -118,3 +120,12 @@ export type ProcessFilesOptions = ImageOptimizationOptions & {
     errorMode?: FileProcessingErrorMode;
     concurrency?: number;
 };
+
+export type ImageOutputFormat =
+    | 'jpeg'
+    | 'png'
+    | 'webp';
+
+export type ImageOutputMode =
+    | 'original'
+    | 'format';

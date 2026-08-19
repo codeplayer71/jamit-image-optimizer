@@ -10,6 +10,12 @@ import type {
     ImageResizeOptions,
 } from './types';
 
+import {
+    getOutputFileName,
+    getOutputMimeType,
+} from './output-file';
+import { resolveOutputFormat } from './output-format';
+
 type WorkerResult = {
     type: 'result';
     buffer: ArrayBuffer;
@@ -88,6 +94,50 @@ export async function optimizeImage(
         );
     }
 
+    const mode = options.mode ?? 'original';
+
+    if (
+        mode !== 'original' &&
+        mode !== 'format'
+    ) {
+        throw new ImageOptimizerError(
+            'invalid-options',
+            'mode must be either "original" or "format".',
+        );
+    }
+
+    if (
+        options.format !== undefined &&
+        options.format !== 'jpeg' &&
+        options.format !== 'png' &&
+        options.format !== 'webp'
+    ) {
+        throw new ImageOptimizerError(
+            'invalid-options',
+            'format must be either "jpeg", "png", or "webp".',
+        );
+    }
+
+    if (
+        mode === 'format' &&
+        options.format === undefined
+    ) {
+        throw new ImageOptimizerError(
+            'invalid-options',
+            'format is required when mode is "format".',
+        );
+    }
+
+    if (
+        mode === 'original' &&
+        options.format !== undefined
+    ) {
+        throw new ImageOptimizerError(
+            'invalid-options',
+            'format cannot be used when mode is "original".',
+        );
+    }
+
     const { maxWidth, maxHeight } = options.resize ?? {};
 
     if (
@@ -107,16 +157,42 @@ export async function optimizeImage(
         );
     }
 
-    const format = getImageFormat(file);
+    const inputFormat = getImageFormat(file);
 
-    if (
-        format !== 'jpeg' &&
-        format !== 'png' &&
-        format !== 'webp'
-    ) {
+    if (!inputFormat) {
         throw new ImageOptimizerError(
             'unsupported-format',
             `Unsupported image format: ${file.type || 'unknown'}.`,
+        );
+    }
+
+    const outputFormat = resolveOutputFormat(
+        inputFormat,
+        options,
+    );
+
+    if (!outputFormat) {
+        throw new ImageOptimizerError(
+            'unsupported-format',
+            `The original format "${inputFormat}" cannot be encoded.`,
+        );
+    }
+
+    if (
+        inputFormat !== 'jpeg' &&
+        inputFormat !== 'png' &&
+        inputFormat !== 'webp'
+    ) {
+        throw new ImageOptimizerError(
+            'unsupported-format',
+            `Input format "${inputFormat}" is not yet connected to the optimizer.`,
+        );
+    }
+
+    if (outputFormat !== inputFormat) {
+        throw new ImageOptimizerError(
+            'unsupported-format',
+            `Conversion from "${inputFormat}" to "${outputFormat}" is not implemented yet.`,
         );
     }
 
@@ -136,7 +212,7 @@ export async function optimizeImage(
     const inputBuffer = await file.arrayBuffer();
 
     const workerResult = await processImage(
-        format,
+        inputFormat,
         inputBuffer,
         quality,
         options.resize,
@@ -151,10 +227,27 @@ export async function optimizeImage(
         progress: null,
     });
 
-    const outputFile = new File([workerResult.buffer], file.name, {
-        type: file.type,
-        lastModified: file.lastModified,
-    });
+    const outputFileName =
+        outputFormat === inputFormat
+            ? file.name
+            : getOutputFileName(
+                file.name,
+                outputFormat,
+            );
+
+    const outputMimeType =
+        outputFormat === inputFormat
+            ? file.type
+            : getOutputMimeType(outputFormat);
+
+    const outputFile = new File(
+        [workerResult.buffer],
+        outputFileName,
+        {
+            type: outputMimeType,
+            lastModified: file.lastModified,
+        },
+    );
 
     const outputIsLarger = outputFile.size >= file.size;
 

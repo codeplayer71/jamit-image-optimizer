@@ -1,4 +1,5 @@
 import { processFiles } from '../src';
+import { probeHeicCapabilities } from '../src/heic-capabilities';
 
 const fileInput = document.querySelector<HTMLInputElement>('#file-input');
 const cancelButton =
@@ -33,6 +34,8 @@ fileInput.addEventListener('change', async () => {
         return;
     }
 
+    const selectedFiles = Array.from(files);
+
     activeController?.abort();
 
     const controller = new AbortController();
@@ -42,7 +45,20 @@ fileInput.addEventListener('change', async () => {
     resultElement.textContent = 'Processing...';
 
     try {
-        const result = await processFiles(files, {
+        const heicFiles = selectedFiles.filter(
+            (file) =>
+                file.type === 'image/heic' ||
+                file.type === 'image/heif',
+        );
+
+        const heicCapabilities = await Promise.all(
+            heicFiles.map(async (file) => ({
+                name: file.name,
+                capabilities: await probeHeicCapabilities(file),
+            })),
+        );
+
+        const result = await processFiles(selectedFiles, {
             quality: 0.85,
             targetSize: 500_000,
             minQuality: 0.5,
@@ -88,18 +104,29 @@ fileInput.addEventListener('change', async () => {
                         output: item.optimization.output,
                         compression: item.optimization.compression,
                         timing: {
-                            totalMs: Math.round(item.optimization.timing.totalMs),
-                            decodeMs: Math.round(item.optimization.timing.decodeMs),
-                            resizeMs: Math.round(item.optimization.timing.resizeMs),
-                            encodeMs: Math.round(item.optimization.timing.encodeMs),
+                            totalMs: Math.round(
+                                item.optimization.timing.totalMs,
+                            ),
+                            decodeMs: Math.round(
+                                item.optimization.timing.decodeMs,
+                            ),
+                            resizeMs: Math.round(
+                                item.optimization.timing.resizeMs,
+                            ),
+                            encodeMs: Math.round(
+                                item.optimization.timing.encodeMs,
+                            ),
                         },
                     }),
                 })),
                 summary: {
                     ...result.summary,
                     savedPercent:
-                        Math.round(result.summary.savedPercent * 100) / 100,
+                        Math.round(
+                            result.summary.savedPercent * 100,
+                        ) / 100,
                 },
+                heicCapabilities,
             },
             null,
             2,
@@ -108,7 +135,9 @@ fileInput.addEventListener('change', async () => {
         console.error(error);
 
         resultElement.textContent =
-            error instanceof Error ? error.message : String(error);
+            error instanceof Error
+                ? error.message
+                : String(error);
     } finally {
         if (activeController === controller) {
             activeController = null;

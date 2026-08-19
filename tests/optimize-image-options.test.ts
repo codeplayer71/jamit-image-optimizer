@@ -114,4 +114,41 @@ describe('optimizeImage options', () => {
             code: 'invalid-options',
         });
     });
+
+    it('requires a format when mode is format', async () => {
+        const file = new File(
+            [new Uint8Array(4)],
+            'image.jpg',
+            {
+                type: 'image/jpeg',
+            },
+        );
+
+        await expect(
+            optimizeImage(file, {
+                mode: 'format',
+            }),
+        ).rejects.toMatchObject({
+            code: 'invalid-options',
+        });
+    });
+
+    it('rejects format when mode is original', async () => {
+        const file = new File(
+            [new Uint8Array(4)],
+            'image.jpg',
+            {
+                type: 'image/jpeg',
+            },
+        );
+
+        await expect(
+            optimizeImage(file, {
+                mode: 'original',
+                format: 'webp',
+            }),
+        ).rejects.toMatchObject({
+            code: 'invalid-options',
+        });
+    });
 });
