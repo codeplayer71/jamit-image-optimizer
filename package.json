@@ -1,7 +1,6 @@
 {
   "name": "jamit-image-optimizer",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.1.0",
   "description": "TypeScript-first image optimization pipeline for browser uploads.",
   "type": "module",
   "main": "./dist/index.js",
