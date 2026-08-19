@@ -50,6 +50,16 @@ type BrowserResourceLimitResult = {
     pixelErrorCode: string | null;
 };
 
+type BrowserTargetSizeResult = {
+    highQualitySize: number;
+    lowQualitySize: number;
+    outputSize: number;
+    targetSize: number | null;
+    targetReached: boolean | null;
+    quality: number | null;
+    encodeAttempts: number;
+};
+
 declare global {
     interface Window {
         runImageOptimizationTest:
@@ -69,6 +79,9 @@ declare global {
 
         runResourceLimitTest:
             () => Promise<BrowserResourceLimitResult>;
+
+        runTargetSizeTest:
+            () => Promise<BrowserTargetSizeResult>;
     }
 }
 
@@ -507,6 +520,84 @@ window.runResourceLimitTest =
         };
     };
 
+window.runTargetSizeTest =
+    async (): Promise<BrowserTargetSizeResult> => {
+        const file =
+            await createDetailedImageFile(
+                'target-size.png',
+                640,
+                480,
+            );
+
+        const highQualityResult =
+            await optimizeImage(
+                file,
+                {
+                    mode: 'format',
+                    format: 'webp',
+                    quality: 0.9,
+                },
+            );
+
+        const lowQualityResult =
+            await optimizeImage(
+                file,
+                {
+                    mode: 'format',
+                    format: 'webp',
+                    quality: 0.2,
+                },
+            );
+
+        const highQualitySize =
+            highQualityResult.output.size;
+
+        const lowQualitySize =
+            lowQualityResult.output.size;
+
+        const targetSize = Math.floor(
+            lowQualitySize +
+            (
+                highQualitySize -
+                lowQualitySize
+            ) /
+            2,
+        );
+
+        const result = await optimizeImage(
+            file,
+            {
+                mode: 'format',
+                format: 'webp',
+                quality: 0.9,
+                targetSize,
+                minQuality: 0.2,
+            },
+        );
+
+        return {
+            highQualitySize,
+            lowQualitySize,
+            outputSize:
+            result.output.size,
+            targetSize:
+                result.compression
+                    .targetSize ??
+                null,
+            targetReached:
+                result.compression
+                    .targetReached ??
+                null,
+            quality:
+                result.compression
+                    .quality ??
+                null,
+            encodeAttempts:
+            result.compression
+                .encodeAttempts,
+        };
+    };
+
 async function createImageFile(
     name: string,
     type: 'image/jpeg' | 'image/png',
@@ -622,4 +713,93 @@ async function getOptimizationErrorCode(
 
         return null;
     }
+}
+
+async function createDetailedImageFile(
+    name: string,
+    width: number,
+    height: number,
+): Promise<File> {
+    const canvas =
+        document.createElement('canvas');
+
+    canvas.width = width;
+    canvas.height = height;
+
+    const context =
+        canvas.getContext('2d');
+
+    if (!context) {
+        throw new Error(
+            'Canvas 2D context is unavailable.',
+        );
+    }
+
+    const imageData =
+        context.createImageData(
+            width,
+            height,
+        );
+
+    let seed = 123_456_789;
+
+    for (
+        let index = 0;
+        index < imageData.data.length;
+        index += 4
+    ) {
+        seed =
+            (
+                seed * 1_664_525 +
+                1_013_904_223
+            ) >>> 0;
+
+        imageData.data[index] =
+            seed & 0xff;
+
+        imageData.data[index + 1] =
+            (seed >>> 8) & 0xff;
+
+        imageData.data[index + 2] =
+            (seed >>> 16) & 0xff;
+
+        imageData.data[index + 3] =
+            0xff;
+    }
+
+    context.putImageData(
+        imageData,
+        0,
+        0,
+    );
+
+    const blob =
+        await new Promise<Blob>(
+            (resolve, reject) => {
+                canvas.toBlob(
+                    (result) => {
+                        if (!result) {
+                            reject(
+                                new Error(
+                                    'Failed to create target-size test image.',
+                                ),
+                            );
+
+                            return;
+                        }
+
+                        resolve(result);
+                    },
+                    'image/png',
+                );
+            },
+        );
+
+    return new File(
+        [blob],
+        name,
+        {
+            type: 'image/png',
+        },
+    );
 }

@@ -171,3 +171,57 @@ test('enforces image resource limits in the real browser worker', async ({
             'resource-limit-exceeded',
     });
 });
+
+test('searches WebP quality to reach a target size in the real browser', async ({
+                                                                                    page,
+                                                                                }) => {
+    await page.goto(
+        '/browser-test.html',
+    );
+
+    const result =
+        await page.evaluate(async () => {
+            return window
+                .runTargetSizeTest();
+        });
+
+    expect(
+        result.highQualitySize,
+    ).toBeGreaterThan(
+        result.lowQualitySize,
+    );
+
+    expect(result.targetSize).not.toBeNull();
+
+    expect(
+        result.targetSize!,
+    ).toBeGreaterThan(
+        result.lowQualitySize,
+    );
+
+    expect(
+        result.targetSize!,
+    ).toBeLessThan(
+        result.highQualitySize,
+    );
+
+    expect(result.targetReached).toBe(
+        true,
+    );
+
+    expect(
+        result.outputSize,
+    ).toBeLessThanOrEqual(
+        result.targetSize!,
+    );
+
+    expect(
+        result.encodeAttempts,
+    ).toBeGreaterThan(1);
+
+    expect(result.quality).not.toBeNull();
+
+    expect(result.quality!).toBeLessThan(
+        0.9,
+    );
+});
