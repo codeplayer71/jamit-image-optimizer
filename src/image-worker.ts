@@ -6,16 +6,15 @@ import {
     decodeImage,
     type DecodableImageFormat,
 } from './image-decoder';
-import {
-    encodeImage,
-} from './image-encoder';
+import { encodeImage } from './image-encoder';
 import {
     ImageOptimizerError,
     isImageOptimizerError,
 } from './errors';
-import { calculateResizeDimensions } from './resize';
 import { hasTransparency } from './image-alpha';
+import { calculateResizeDimensions } from './resize';
 import type { ImageOutputFormat } from './types';
+
 type ProcessImageMessage = {
     buffer: ArrayBuffer;
     inputFormat: DecodableImageFormat;
@@ -23,6 +22,7 @@ type ProcessImageMessage = {
     quality: number;
     targetSize?: number;
     minQuality?: number;
+    maxPixels?: number;
     maxWidth?: number;
     maxHeight?: number;
 };
@@ -52,6 +52,20 @@ self.onmessage = async (
 
         const decodeMs =
             performance.now() - decodeStartedAt;
+
+        const pixelCount =
+            originalImageData.width *
+            originalImageData.height;
+
+        if (
+            event.data.maxPixels !== undefined &&
+            pixelCount > event.data.maxPixels
+        ) {
+            throw new ImageOptimizerError(
+                'resource-limit-exceeded',
+                `Decoded image contains ${pixelCount} pixels and exceeds the configured limit of ${event.data.maxPixels} pixels.`,
+            );
+        }
 
         const outputDimensions =
             calculateResizeDimensions(

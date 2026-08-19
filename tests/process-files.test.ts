@@ -543,4 +543,80 @@ describe('processFiles', () => {
 
         expect(result.summary.failedOptimizations).toBe(0);
     });
+
+    it('passes an image through unchanged when the resource limit is exceeded', async () => {
+        vi.stubGlobal(
+            'Worker',
+            class {
+                onmessage:
+                    | ((event: MessageEvent) => void)
+                    | null = null;
+
+                onerror:
+                    | ((event: ErrorEvent) => void)
+                    | null = null;
+
+                postMessage(): void {
+                    this.onmessage?.({
+                        data: {
+                            type: 'error',
+                            code: 'resource-limit-exceeded',
+                            message:
+                                'Decoded image exceeds the configured pixel limit.',
+                        },
+                    } as MessageEvent);
+                }
+
+                terminate(): void {}
+            },
+        );
+
+        const file = new File(
+            [new Uint8Array(4)],
+            'large.jpg',
+            {
+                type: 'image/jpeg',
+            },
+        );
+
+        const result = await processFiles(
+            [file],
+            {
+                limits: {
+                    maxPixels: 1_000_000,
+                },
+            },
+        );
+
+        expect(result.files[0]).toBe(file);
+
+        expect(result.items[0]).toMatchObject({
+            kind: 'image',
+            outcome: 'unchanged',
+            reason: 'resource-limit-exceeded',
+        });
+
+        expect(result.summary).toMatchObject({
+            totalFiles: 1,
+            imageFiles: 1,
+            optimizedFiles: 0,
+            changedFiles: 0,
+            unchangedFiles: 1,
+            failedOptimizations: 0,
+            originalBytes: 4,
+            outputBytes: 4,
+        });
+
+        expect(result.summary.savings).toEqual({
+            bytes: 0,
+            ratio: 0,
+            percent: 0,
+        });
+
+        expect(result.summary.sizeChange).toEqual({
+            bytes: 0,
+            ratio: 0,
+            percent: 0,
+        });
+    });
 });

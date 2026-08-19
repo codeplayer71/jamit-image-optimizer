@@ -4,6 +4,8 @@ import type {
     SizeSavings,
 } from './size-metrics';
 
+import type { ImageProcessingLimits } from './image-limits';
+
 export type ImageResizeOptions = {
     maxWidth?: number;
     maxHeight?: number;
@@ -27,6 +29,7 @@ export type ImageOptimizationOptions = {
     targetSize?: number;
     minQuality?: number;
     resize?: ImageResizeOptions;
+    limits?: ImageProcessingLimits;
     signal?: AbortSignal;
     onStatus?: (status: ImageProcessingStatus) => void;
     mode?: ImageOutputMode;

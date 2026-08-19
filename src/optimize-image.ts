@@ -9,6 +9,10 @@ import {
 } from './output-file';
 import { resolveOutputFormat } from './output-format';
 import { calculateSizeMetrics } from './size-metrics';
+import {
+    exceedsInputByteLimit,
+    resolveImageProcessingLimits,
+} from './image-limits';
 import type {
     ImageOptimizationOptions,
     ImageOptimizationResult,
@@ -44,6 +48,7 @@ type WorkerError = {
         | 'unsupported-format'
         | 'codec-not-supported'
         | 'transparency-not-supported'
+        | 'resource-limit-exceeded'
         | 'worker-failed';
     message: string;
 };
@@ -185,6 +190,33 @@ export async function optimizeImage(
         );
     }
 
+    let limits;
+
+    try {
+        limits = resolveImageProcessingLimits(
+            options.limits,
+        );
+    } catch (error) {
+        throw new ImageOptimizerError(
+            'invalid-options',
+            error instanceof Error
+                ? error.message
+                : 'Invalid image processing limits.',
+        );
+    }
+
+    if (
+        exceedsInputByteLimit(
+            file.size,
+            limits,
+        )
+    ) {
+        throw new ImageOptimizerError(
+            'resource-limit-exceeded',
+            `Input file size of ${file.size} bytes exceeds the configured limit of ${limits.maxInputBytes} bytes.`,
+        );
+    }
+
     if (options.signal?.aborted) {
         throw new ImageOptimizerError(
             'aborted',
@@ -236,6 +268,7 @@ export async function optimizeImage(
         options.resize,
         options.targetSize,
         options.minQuality,
+        limits.maxPixels,
         options.signal,
         options.onStatus,
     );
@@ -383,6 +416,7 @@ function processImage(
     resize?: ImageResizeOptions,
     targetSize?: number,
     minQuality?: number,
+    maxPixels?: number,
     signal?: AbortSignal,
     onStatus?: (
         status: ImageProcessingStatus,
@@ -488,6 +522,9 @@ function processImage(
                 ...(minQuality !== undefined && {
                     minQuality:
                         minQuality * 100,
+                }),
+                ...(maxPixels !== undefined && {
+                    maxPixels,
                 }),
                 ...(resize?.maxWidth !== undefined && {
                     maxWidth: resize.maxWidth,

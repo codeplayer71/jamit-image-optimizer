@@ -802,4 +802,41 @@ describe('optimizeImage result', () => {
             percent: -50,
         });
     });
+
+    it('propagates the pixel resource limit from the worker', async () => {
+        vi.stubGlobal(
+            'Worker',
+            class extends WorkerMock {
+                override postMessage(): void {
+                    this.onmessage?.({
+                        data: {
+                            type: 'error',
+                            code: 'resource-limit-exceeded',
+                            message:
+                                'Decoded image exceeds the configured pixel limit.',
+                        },
+                    } as MessageEvent);
+                }
+            },
+        );
+
+        const file = new File(
+            [new Uint8Array(4)],
+            'photo.jpg',
+            {
+                type: 'image/jpeg',
+            },
+        );
+
+        await expect(
+            optimizeImage(file, {
+                limits: {
+                    maxPixels: 1_000_000,
+                },
+            }),
+        ).rejects.toMatchObject({
+            name: 'ImageOptimizerError',
+            code: 'resource-limit-exceeded',
+        });
+    });
 });

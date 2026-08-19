@@ -1,4 +1,9 @@
-import { describe, expect, it } from 'vitest';
+import {
+    describe,
+    expect,
+    it,
+    vi,
+} from 'vitest';
 
 import {
     ImageOptimizerError,
@@ -169,5 +174,33 @@ describe('optimizeImage options', () => {
         ).rejects.toMatchObject({
             code: 'invalid-options',
         });
+    });
+
+    it('rejects an image before reading it when the input byte limit is exceeded', async () => {
+        const file = new File(
+            [new Uint8Array(4)],
+            'photo.jpg',
+            {
+                type: 'image/jpeg',
+            },
+        );
+
+        const arrayBufferSpy = vi.spyOn(
+            file,
+            'arrayBuffer',
+        );
+
+        await expect(
+            optimizeImage(file, {
+                limits: {
+                    maxInputBytes: 3,
+                },
+            }),
+        ).rejects.toMatchObject({
+            name: 'ImageOptimizerError',
+            code: 'resource-limit-exceeded',
+        });
+
+        expect(arrayBufferSpy).not.toHaveBeenCalled();
     });
 });

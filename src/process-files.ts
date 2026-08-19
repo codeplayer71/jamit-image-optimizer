@@ -140,6 +140,17 @@ export async function processFiles(
                     };
                 }
 
+                if (error.code === 'resource-limit-exceeded') {
+                    return {
+                        index,
+                        originalFile: file,
+                        file,
+                        kind: 'image',
+                        outcome: 'unchanged',
+                        reason: 'resource-limit-exceeded',
+                    };
+                }
+
                 return {
                     index,
                     originalFile: file,
