@@ -158,4 +158,52 @@ describe('classifyFile', () => {
             'unsupported-image',
         );
     });
+
+    it('detects HEIC from its file signature when the MIME type is empty', async () => {
+        const bytes = new Uint8Array(24);
+        const view = new DataView(bytes.buffer);
+
+        view.setUint32(0, 24);
+
+        bytes.set(
+            [
+                0x66,
+                0x74,
+                0x79,
+                0x70,
+            ],
+            4,
+        );
+
+        bytes.set(
+            [
+                0x6d,
+                0x69,
+                0x66,
+                0x31,
+            ],
+            8,
+        );
+
+        bytes.set(
+            [
+                0x68,
+                0x65,
+                0x69,
+                0x63,
+            ],
+            16,
+        );
+
+        const file = new File(
+            [bytes],
+            'photo',
+        );
+
+        await expect(
+            classifyFile(file),
+        ).resolves.toBe(
+            'supported-image',
+        );
+    });
 });

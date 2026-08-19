@@ -6,7 +6,7 @@ export type FileClassification =
     | 'unsupported-image'
     | 'passthrough';
 
-const IMAGE_SIGNATURE_BYTES = 12;
+const IMAGE_SIGNATURE_BYTES = 64;
 
 export async function classifyFile(
     file: File,

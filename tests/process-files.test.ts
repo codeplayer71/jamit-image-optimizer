@@ -33,6 +33,52 @@ describe('processFiles', () => {
         vi.unstubAllGlobals();
     });
 
+    function createHeicTestFile(
+        name: string,
+    ): File {
+        const bytes = new Uint8Array(24);
+        const view = new DataView(
+            bytes.buffer,
+        );
+
+        view.setUint32(0, 24);
+
+        bytes.set(
+            [
+                0x66,
+                0x74,
+                0x79,
+                0x70,
+            ],
+            4,
+        );
+
+        bytes.set(
+            [
+                0x6d,
+                0x69,
+                0x66,
+                0x31,
+            ],
+            8,
+        );
+
+        bytes.set(
+            [
+                0x68,
+                0x65,
+                0x69,
+                0x63,
+            ],
+            16,
+        );
+
+        return new File(
+            [bytes],
+            name,
+        );
+    }
+
     it('preserves order and passes unsupported files through unchanged', async () => {
         vi.stubGlobal('Worker', WorkerMock);
 
@@ -713,6 +759,141 @@ describe('processFiles', () => {
             bytes: 0,
             ratio: 0,
             percent: 0,
+        });
+    });
+
+    it('processes JPEG, WebP, and HEIC from their signatures when MIME types are empty', async () => {
+        const postedFormats: Array<{
+            inputFormat: string;
+            outputFormat: string;
+        }> = [];
+
+        vi.stubGlobal(
+            'Worker',
+            class {
+                onmessage:
+                    | ((event: MessageEvent) => void)
+                    | null = null;
+
+                onerror:
+                    | ((event: ErrorEvent) => void)
+                    | null = null;
+
+                postMessage(message: unknown): void {
+                    const data = message as {
+                        inputFormat: string;
+                        outputFormat: string;
+                    };
+
+                    postedFormats.push({
+                        inputFormat: data.inputFormat,
+                        outputFormat: data.outputFormat,
+                    });
+
+                    this.onmessage?.({
+                        data: {
+                            type: 'result',
+                            buffer: new ArrayBuffer(2),
+                            originalWidth: 200,
+                            originalHeight: 100,
+                            outputWidth: 200,
+                            outputHeight: 100,
+                            decodeMs: 10,
+                            resizeMs: 0,
+                            encodeMs: 20,
+                            finalQuality: 80,
+                            encodeAttempts: 1,
+                        },
+                    } as MessageEvent);
+                }
+
+                terminate(): void {}
+            },
+        );
+
+        const jpeg = createTestImageFile(
+            'jpeg',
+            {
+                name: 'jpeg-file',
+                type: '',
+            },
+        );
+
+        const webp = createTestImageFile(
+            'webp',
+            {
+                name: 'webp-file',
+                type: '',
+            },
+        );
+
+        const heic = createHeicTestFile(
+            'heic-file',
+        );
+
+        const result = await processFiles(
+            [
+                jpeg,
+                webp,
+                heic,
+            ],
+            {
+                mode: 'auto',
+            },
+        );
+
+        expect(postedFormats).toEqual([
+            {
+                inputFormat: 'jpeg',
+                outputFormat: 'webp',
+            },
+            {
+                inputFormat: 'webp',
+                outputFormat: 'webp',
+            },
+            {
+                inputFormat: 'heic',
+                outputFormat: 'webp',
+            },
+        ]);
+
+        expect(
+            result.items.map(
+                (item) => item.outcome,
+            ),
+        ).toEqual([
+            'optimized',
+            'optimized',
+            'optimized',
+        ]);
+
+        expect(
+            result.files.map(
+                (file) => file.name,
+            ),
+        ).toEqual([
+            'jpeg-file.webp',
+            'webp-file.webp',
+            'heic-file.webp',
+        ]);
+
+        expect(
+            result.files.map(
+                (file) => file.type,
+            ),
+        ).toEqual([
+            'image/webp',
+            'image/webp',
+            'image/webp',
+        ]);
+
+        expect(result.summary).toMatchObject({
+            totalFiles: 3,
+            imageFiles: 3,
+            optimizedFiles: 3,
+            changedFiles: 0,
+            unchangedFiles: 0,
+            failedOptimizations: 0,
         });
     });
 });
