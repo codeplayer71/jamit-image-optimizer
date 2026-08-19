@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { optimizeImage } from '../src';
+import { createTestImageFile } from './test-image-files';
 
 class WorkerMock {
     onmessage: ((event: MessageEvent) => void) | null = null;
@@ -37,11 +38,10 @@ describe('optimizeImage result', () => {
     it('keeps the original file when the encoded output is larger', async () => {
         vi.stubGlobal('Worker', WorkerMock);
 
-        const file = new File(
-            [new Uint8Array(4)],
-            'image.jpg',
+        const file = createTestImageFile(
+            'jpeg',
             {
-                type: 'image/jpeg',
+                name: 'image.jpg',
                 lastModified: 123,
             },
         );
@@ -107,11 +107,10 @@ describe('optimizeImage result', () => {
             },
         );
 
-        const file = new File(
-            [new Uint8Array(4)],
-            'image.jpg',
+        const file = createTestImageFile(
+            'jpeg',
             {
-                type: 'image/jpeg',
+                name: 'image.jpg',
                 lastModified: 123,
             },
         );
@@ -185,11 +184,10 @@ describe('optimizeImage result', () => {
 
         const controller = new AbortController();
 
-        const file = new File(
-            [new Uint8Array(4)],
-            'image.jpg',
+        const file = createTestImageFile(
+            'jpeg',
             {
-                type: 'image/jpeg',
+                name: 'image.jpg',
             },
         );
 
@@ -256,11 +254,10 @@ describe('optimizeImage result', () => {
             },
         );
 
-        const file = new File(
-            [new Uint8Array(4)],
-            'image.jpg',
+        const file = createTestImageFile(
+            'jpeg',
             {
-                type: 'image/jpeg',
+                name: 'image.jpg',
             },
         );
 
@@ -307,11 +304,10 @@ describe('optimizeImage result', () => {
             },
         );
 
-        const file = new File(
-            [new Uint8Array(4)],
-            'image.jpg',
+        const file = createTestImageFile(
+            'jpeg',
             {
-                type: 'image/jpeg',
+                name: 'image.jpg',
             },
         );
 
@@ -352,11 +348,10 @@ describe('optimizeImage result', () => {
             },
         );
 
-        const file = new File(
-            [new Uint8Array(4)],
-            'image.png',
+        const file = createTestImageFile(
+            'png',
             {
-                type: 'image/png',
+                name: 'image.png',
                 lastModified: 123,
             },
         );
@@ -414,11 +409,10 @@ describe('optimizeImage result', () => {
             },
         );
 
-        const file = new File(
-            [new Uint8Array(4)],
-            'image.webp',
+        const file = createTestImageFile(
+            'webp',
             {
-                type: 'image/webp',
+                name: 'image.webp',
                 lastModified: 123,
             },
         );
@@ -478,11 +472,10 @@ describe('optimizeImage result', () => {
             },
         );
 
-        const file = new File(
-            [new Uint8Array(4)],
-            'photo.jpg',
+        const file = createTestImageFile(
+            'jpeg',
             {
-                type: 'image/jpeg',
+                name: 'photo.jpg',
                 lastModified: 123,
             },
         );
@@ -529,11 +522,10 @@ describe('optimizeImage result', () => {
             },
         );
 
-        const file = new File(
-            [new Uint8Array(4)],
-            'photo.png',
+        const file = createTestImageFile(
+            'png',
             {
-                type: 'image/png',
+                name: 'photo.png',
                 lastModified: 123,
             },
         );
@@ -587,11 +579,10 @@ describe('optimizeImage result', () => {
             },
         );
 
-        const file = new File(
-            [new Uint8Array(4)],
-            'photo.jpg',
+        const file = createTestImageFile(
+            'jpeg',
             {
-                type: 'image/jpeg',
+                name: 'photo.jpg',
                 lastModified: 123,
             },
         );
@@ -712,11 +703,10 @@ describe('optimizeImage result', () => {
             },
         );
 
-        const file = new File(
-            [new Uint8Array(4)],
-            'photo.jpg',
+        const file = createTestImageFile(
+            'jpeg',
             {
-                type: 'image/jpeg',
+                name: 'photo.jpg',
             },
         );
 
@@ -771,11 +761,10 @@ describe('optimizeImage result', () => {
             },
         );
 
-        const file = new File(
-            [new Uint8Array(4)],
-            'photo.jpg',
+        const file = createTestImageFile(
+            'jpeg',
             {
-                type: 'image/jpeg',
+                name: 'photo.jpg',
             },
         );
 
@@ -820,11 +809,10 @@ describe('optimizeImage result', () => {
             },
         );
 
-        const file = new File(
-            [new Uint8Array(4)],
-            'photo.jpg',
+        const file = createTestImageFile(
+            'jpeg',
             {
-                type: 'image/jpeg',
+                name: 'photo.jpg',
             },
         );
 
@@ -838,5 +826,66 @@ describe('optimizeImage result', () => {
             name: 'ImageOptimizerError',
             code: 'resource-limit-exceeded',
         });
+    });
+
+    it('uses the file signature over an incorrect MIME type', async () => {
+        let postedMessage: unknown;
+
+        vi.stubGlobal(
+            'Worker',
+            class {
+                onmessage:
+                    | ((event: MessageEvent) => void)
+                    | null = null;
+
+                onerror:
+                    | ((event: ErrorEvent) => void)
+                    | null = null;
+
+                postMessage(message: unknown): void {
+                    postedMessage = message;
+
+                    this.onmessage?.({
+                        data: {
+                            type: 'result',
+                            buffer: new ArrayBuffer(2),
+                            originalWidth: 200,
+                            originalHeight: 100,
+                            outputWidth: 200,
+                            outputHeight: 100,
+                            decodeMs: 10,
+                            resizeMs: 0,
+                            encodeMs: 20,
+                            finalQuality: 80,
+                            encodeAttempts: 1,
+                        },
+                    } as MessageEvent);
+                }
+
+                terminate(): void {}
+            },
+        );
+
+        const file = createTestImageFile(
+            'jpeg',
+            {
+                name: 'photo.png',
+                type: 'image/png',
+            },
+        );
+
+        const result = await optimizeImage(file);
+
+        expect(postedMessage).toMatchObject({
+            inputFormat: 'jpeg',
+            outputFormat: 'jpeg',
+        });
+
+        expect(result.file.name).toBe('photo.jpg');
+        expect(result.file.type).toBe('image/jpeg');
+
+        expect(result.optimized).toBe(true);
+        expect(result.converted).toBe(false);
+        expect(result.changed).toBe(true);
     });
 });

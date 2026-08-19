@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { processFiles } from '../src';
+import { createTestImageFile } from './test-image-files';
 
 class WorkerMock {
     onmessage: ((event: MessageEvent) => void) | null = null;
@@ -35,11 +36,10 @@ describe('processFiles', () => {
     it('preserves order and passes unsupported files through unchanged', async () => {
         vi.stubGlobal('Worker', WorkerMock);
 
-        const jpeg = new File(
-            [new Uint8Array(4)],
-            'photo.jpg',
+        const jpeg = createTestImageFile(
+            'jpeg',
             {
-                type: 'image/jpeg',
+                name: 'photo.jpg',
             },
         );
 
@@ -78,25 +78,35 @@ describe('processFiles', () => {
         expect(result.files[2]).toBe(heic);
         expect(result.files[3]).toBe(text);
 
-        expect(result.items.map((item) => item.index)).toEqual([
+        expect(
+            result.items.map((item) => item.index),
+        ).toEqual([
             0,
             1,
             2,
             3,
         ]);
 
-        expect(result.items.map((item) => item.outcome)).toEqual([
+        expect(
+            result.items.map((item) => item.outcome),
+        ).toEqual([
             'optimized',
             'unchanged',
             'unchanged',
             'unchanged',
         ]);
 
-        expect(result.items[1]?.reason).toBe('non-image');
+        expect(result.items[1]?.reason).toBe(
+            'non-image',
+        );
+
         expect(result.items[2]?.reason).toBe(
             'unsupported-image-format',
         );
-        expect(result.items[3]?.reason).toBe('non-image');
+
+        expect(result.items[3]?.reason).toBe(
+            'non-image',
+        );
 
         expect(result.summary).toEqual({
             totalFiles: 4,
@@ -123,11 +133,10 @@ describe('processFiles', () => {
     it('does not mutate the input array', async () => {
         vi.stubGlobal('Worker', WorkerMock);
 
-        const jpeg = new File(
-            [new Uint8Array(4)],
-            'photo.jpg',
+        const jpeg = createTestImageFile(
+            'jpeg',
             {
-                type: 'image/jpeg',
+                name: 'photo.jpg',
             },
         );
 
@@ -153,8 +162,13 @@ describe('processFiles', () => {
         vi.stubGlobal(
             'Worker',
             class {
-                onmessage: ((event: MessageEvent) => void) | null = null;
-                onerror: ((event: ErrorEvent) => void) | null = null;
+                onmessage:
+                    | ((event: MessageEvent) => void)
+                    | null = null;
+
+                onerror:
+                    | ((event: ErrorEvent) => void)
+                    | null = null;
 
                 postMessage(): void {
                     this.onerror?.({
@@ -166,15 +180,16 @@ describe('processFiles', () => {
             },
         );
 
-        const jpeg = new File(
-            [new Uint8Array(4)],
-            'photo.jpg',
+        const jpeg = createTestImageFile(
+            'jpeg',
             {
-                type: 'image/jpeg',
+                name: 'photo.jpg',
             },
         );
 
-        const result = await processFiles([jpeg]);
+        const result = await processFiles([
+            jpeg,
+        ]);
 
         expect(result.files[0]).toBe(jpeg);
 
@@ -187,19 +202,28 @@ describe('processFiles', () => {
             reason: 'optimization-failed',
         });
 
-        expect(result.items[0]?.error).toMatchObject({
+        expect(
+            result.items[0]?.error,
+        ).toMatchObject({
             code: 'worker-failed',
         });
 
-        expect(result.summary.failedOptimizations).toBe(1);
+        expect(
+            result.summary.failedOptimizations,
+        ).toBe(1);
     });
 
     it('rejects the batch when errorMode is throw', async () => {
         vi.stubGlobal(
             'Worker',
             class {
-                onmessage: ((event: MessageEvent) => void) | null = null;
-                onerror: ((event: ErrorEvent) => void) | null = null;
+                onmessage:
+                    | ((event: MessageEvent) => void)
+                    | null = null;
+
+                onerror:
+                    | ((event: ErrorEvent) => void)
+                    | null = null;
 
                 postMessage(): void {
                     this.onerror?.({
@@ -211,18 +235,20 @@ describe('processFiles', () => {
             },
         );
 
-        const jpeg = new File(
-            [new Uint8Array(4)],
-            'photo.jpg',
+        const jpeg = createTestImageFile(
+            'jpeg',
             {
-                type: 'image/jpeg',
+                name: 'photo.jpg',
             },
         );
 
         await expect(
-            processFiles([jpeg], {
-                errorMode: 'throw',
-            }),
+            processFiles(
+                [jpeg],
+                {
+                    errorMode: 'throw',
+                },
+            ),
         ).rejects.toMatchObject({
             code: 'worker-failed',
         });
@@ -234,15 +260,18 @@ describe('processFiles', () => {
         1.5,
         Number.NaN,
         Number.POSITIVE_INFINITY,
-    ])('rejects invalid concurrency value %s', async (concurrency) => {
-        await expect(
-            processFiles([], {
-                concurrency,
-            }),
-        ).rejects.toMatchObject({
-            code: 'invalid-options',
-        });
-    });
+    ])(
+        'rejects invalid concurrency value %s',
+        async (concurrency) => {
+            await expect(
+                processFiles([], {
+                    concurrency,
+                }),
+            ).rejects.toMatchObject({
+                code: 'invalid-options',
+            });
+        },
+    );
 
     it('limits concurrent image processing while preserving file order', async () => {
         let activeWorkers = 0;
@@ -251,11 +280,17 @@ describe('processFiles', () => {
         vi.stubGlobal(
             'Worker',
             class {
-                onmessage: ((event: MessageEvent) => void) | null = null;
-                onerror: ((event: ErrorEvent) => void) | null = null;
+                onmessage:
+                    | ((event: MessageEvent) => void)
+                    | null = null;
+
+                onerror:
+                    | ((event: ErrorEvent) => void)
+                    | null = null;
 
                 postMessage(): void {
                     activeWorkers += 1;
+
                     maxActiveWorkers = Math.max(
                         maxActiveWorkers,
                         activeWorkers,
@@ -267,7 +302,10 @@ describe('processFiles', () => {
                         this.onmessage?.({
                             data: {
                                 type: 'result',
-                                buffer: new ArrayBuffer(1),
+                                buffer:
+                                    new ArrayBuffer(
+                                        1,
+                                    ),
                                 originalWidth: 100,
                                 originalHeight: 100,
                                 outputWidth: 100,
@@ -286,13 +324,13 @@ describe('processFiles', () => {
             },
         );
 
-        const firstImage = new File(
-            [new Uint8Array(4)],
-            'first.jpg',
-            {
-                type: 'image/jpeg',
-            },
-        );
+        const firstImage =
+            createTestImageFile(
+                'jpeg',
+                {
+                    name: 'first.jpg',
+                },
+            );
 
         const pdf = new File(
             [new Uint8Array(3)],
@@ -302,21 +340,21 @@ describe('processFiles', () => {
             },
         );
 
-        const secondImage = new File(
-            [new Uint8Array(4)],
-            'second.jpg',
-            {
-                type: 'image/jpeg',
-            },
-        );
+        const secondImage =
+            createTestImageFile(
+                'jpeg',
+                {
+                    name: 'second.jpg',
+                },
+            );
 
-        const thirdImage = new File(
-            [new Uint8Array(4)],
-            'third.jpg',
-            {
-                type: 'image/jpeg',
-            },
-        );
+        const thirdImage =
+            createTestImageFile(
+                'jpeg',
+                {
+                    name: 'third.jpg',
+                },
+            );
 
         const result = await processFiles(
             [
@@ -335,7 +373,9 @@ describe('processFiles', () => {
         expect(result.files).toHaveLength(4);
         expect(result.files[1]).toBe(pdf);
 
-        expect(result.items.map((item) => item.index)).toEqual([
+        expect(
+            result.items.map((item) => item.index),
+        ).toEqual([
             0,
             1,
             2,
@@ -349,15 +389,21 @@ describe('processFiles', () => {
 
         let resolveWorkersStarted!: () => void;
 
-        const workersStarted = new Promise<void>((resolve) => {
-            resolveWorkersStarted = resolve;
-        });
+        const workersStarted =
+            new Promise<void>((resolve) => {
+                resolveWorkersStarted = resolve;
+            });
 
         vi.stubGlobal(
             'Worker',
             class {
-                onmessage: ((event: MessageEvent) => void) | null = null;
-                onerror: ((event: ErrorEvent) => void) | null = null;
+                onmessage:
+                    | ((event: MessageEvent) => void)
+                    | null = null;
+
+                onerror:
+                    | ((event: ErrorEvent) => void)
+                    | null = null;
 
                 constructor() {
                     createdWorkers += 1;
@@ -376,49 +422,73 @@ describe('processFiles', () => {
         );
 
         const files = [
-            new File([new Uint8Array(4)], 'first.jpg', {
-                type: 'image/jpeg',
-            }),
-            new File([new Uint8Array(4)], 'second.jpg', {
-                type: 'image/jpeg',
-            }),
-            new File([new Uint8Array(4)], 'third.jpg', {
-                type: 'image/jpeg',
-            }),
+            createTestImageFile(
+                'jpeg',
+                {
+                    name: 'first.jpg',
+                },
+            ),
+            createTestImageFile(
+                'jpeg',
+                {
+                    name: 'second.jpg',
+                },
+            ),
+            createTestImageFile(
+                'jpeg',
+                {
+                    name: 'third.jpg',
+                },
+            ),
         ];
 
-        const controller = new AbortController();
+        const controller =
+            new AbortController();
 
-        const promise = processFiles(files, {
-            concurrency: 2,
-            signal: controller.signal,
-        });
+        const promise = processFiles(
+            files,
+            {
+                concurrency: 2,
+                signal: controller.signal,
+            },
+        );
 
         await workersStarted;
 
         controller.abort();
 
-        await expect(promise).rejects.toMatchObject({
+        await expect(
+            promise,
+        ).rejects.toMatchObject({
             code: 'aborted',
         });
 
         expect(createdWorkers).toBe(2);
-        expect(terminate).toHaveBeenCalledTimes(2);
+
+        expect(
+            terminate,
+        ).toHaveBeenCalledTimes(2);
     });
 
     it('treats content-level unsupported images as unchanged', async () => {
         vi.stubGlobal(
             'Worker',
             class {
-                onmessage: ((event: MessageEvent) => void) | null = null;
-                onerror: ((event: ErrorEvent) => void) | null = null;
+                onmessage:
+                    | ((event: MessageEvent) => void)
+                    | null = null;
+
+                onerror:
+                    | ((event: ErrorEvent) => void)
+                    | null = null;
 
                 postMessage(): void {
                     this.onmessage?.({
                         data: {
                             type: 'error',
                             code: 'unsupported-format',
-                            message: 'Animated PNG images are not supported.',
+                            message:
+                                'Animated PNG images are not supported.',
                         },
                     } as MessageEvent);
                 }
@@ -427,15 +497,16 @@ describe('processFiles', () => {
             },
         );
 
-        const png = new File(
-            [new Uint8Array(4)],
-            'animated.png',
+        const png = createTestImageFile(
+            'png',
             {
-                type: 'image/png',
+                name: 'animated.png',
             },
         );
 
-        const result = await processFiles([png]);
+        const result = await processFiles([
+            png,
+        ]);
 
         expect(result.files[0]).toBe(png);
 
@@ -445,22 +516,30 @@ describe('processFiles', () => {
             reason: 'unsupported-image-format',
         });
 
-        expect(result.summary.failedOptimizations).toBe(0);
+        expect(
+            result.summary.failedOptimizations,
+        ).toBe(0);
     });
 
     it('passes an image through unchanged when its codec is not supported', async () => {
         vi.stubGlobal(
             'Worker',
             class {
-                onmessage: ((event: MessageEvent) => void) | null = null;
-                onerror: ((event: ErrorEvent) => void) | null = null;
+                onmessage:
+                    | ((event: MessageEvent) => void)
+                    | null = null;
+
+                onerror:
+                    | ((event: ErrorEvent) => void)
+                    | null = null;
 
                 postMessage(): void {
                     this.onmessage?.({
                         data: {
                             type: 'error',
                             code: 'codec-not-supported',
-                            message: 'The required image codec is not supported.',
+                            message:
+                                'The required image codec is not supported.',
                         },
                     } as MessageEvent);
                 }
@@ -469,15 +548,17 @@ describe('processFiles', () => {
             },
         );
 
-        const image = new File(
-            [new Uint8Array(4)],
-            'photo.jpg',
-            {
-                type: 'image/jpeg',
-            },
-        );
+        const image =
+            createTestImageFile(
+                'jpeg',
+                {
+                    name: 'photo.jpg',
+                },
+            );
 
-        const result = await processFiles([image]);
+        const result = await processFiles([
+            image,
+        ]);
 
         expect(result.files[0]).toBe(image);
 
@@ -503,15 +584,21 @@ describe('processFiles', () => {
         vi.stubGlobal(
             'Worker',
             class {
-                onmessage: ((event: MessageEvent) => void) | null = null;
-                onerror: ((event: ErrorEvent) => void) | null = null;
+                onmessage:
+                    | ((event: MessageEvent) => void)
+                    | null = null;
+
+                onerror:
+                    | ((event: ErrorEvent) => void)
+                    | null = null;
 
                 postMessage(): void {
                     this.onmessage?.({
                         data: {
                             type: 'error',
                             code: 'transparency-not-supported',
-                            message: 'JPEG output cannot preserve image transparency.',
+                            message:
+                                'JPEG output cannot preserve image transparency.',
                         },
                     } as MessageEvent);
                 }
@@ -520,28 +607,33 @@ describe('processFiles', () => {
             },
         );
 
-        const png = new File(
-            [new Uint8Array(4)],
-            'logo.png',
+        const png = createTestImageFile(
+            'png',
             {
-                type: 'image/png',
+                name: 'logo.png',
             },
         );
 
-        const result = await processFiles([png], {
-            mode: 'format',
-            format: 'jpeg',
-        });
+        const result = await processFiles(
+            [png],
+            {
+                mode: 'format',
+                format: 'jpeg',
+            },
+        );
 
         expect(result.files[0]).toBe(png);
 
         expect(result.items[0]).toMatchObject({
             kind: 'image',
             outcome: 'unchanged',
-            reason: 'transparency-not-supported',
+            reason:
+                'transparency-not-supported',
         });
 
-        expect(result.summary.failedOptimizations).toBe(0);
+        expect(
+            result.summary.failedOptimizations,
+        ).toBe(0);
     });
 
     it('passes an image through unchanged when the resource limit is exceeded', async () => {
@@ -560,7 +652,8 @@ describe('processFiles', () => {
                     this.onmessage?.({
                         data: {
                             type: 'error',
-                            code: 'resource-limit-exceeded',
+                            code:
+                                'resource-limit-exceeded',
                             message:
                                 'Decoded image exceeds the configured pixel limit.',
                         },
@@ -571,13 +664,13 @@ describe('processFiles', () => {
             },
         );
 
-        const file = new File(
-            [new Uint8Array(4)],
-            'large.jpg',
-            {
-                type: 'image/jpeg',
-            },
-        );
+        const file =
+            createTestImageFile(
+                'jpeg',
+                {
+                    name: 'large.jpg',
+                },
+            );
 
         const result = await processFiles(
             [file],
@@ -593,7 +686,8 @@ describe('processFiles', () => {
         expect(result.items[0]).toMatchObject({
             kind: 'image',
             outcome: 'unchanged',
-            reason: 'resource-limit-exceeded',
+            reason:
+                'resource-limit-exceeded',
         });
 
         expect(result.summary).toMatchObject({
@@ -613,7 +707,9 @@ describe('processFiles', () => {
             percent: 0,
         });
 
-        expect(result.summary.sizeChange).toEqual({
+        expect(
+            result.summary.sizeChange,
+        ).toEqual({
             bytes: 0,
             ratio: 0,
             percent: 0,

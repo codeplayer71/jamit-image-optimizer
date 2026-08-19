@@ -1,18 +1,19 @@
 import { ImageOptimizerError } from './errors';
+import { detectImageFormat } from './image-detection';
 import {
     getImageFormat,
     type ImageFormat,
 } from './image-format';
+import {
+    exceedsInputByteLimit,
+    resolveImageProcessingLimits,
+} from './image-limits';
 import {
     getOutputFileName,
     getOutputMimeType,
 } from './output-file';
 import { resolveOutputFormat } from './output-format';
 import { calculateSizeMetrics } from './size-metrics';
-import {
-    exceedsInputByteLimit,
-    resolveImageProcessingLimits,
-} from './image-limits';
 import type {
     ImageOptimizationOptions,
     ImageOptimizationResult,
@@ -224,27 +225,6 @@ export async function optimizeImage(
         );
     }
 
-    const inputFormat = getImageFormat(file);
-
-    if (!inputFormat) {
-        throw new ImageOptimizerError(
-            'unsupported-format',
-            `Unsupported image format: ${file.type || 'unknown'}.`,
-        );
-    }
-
-    const outputFormat = resolveOutputFormat(
-        inputFormat,
-        options,
-    );
-
-    if (!outputFormat) {
-        throw new ImageOptimizerError(
-            'unsupported-format',
-            `The original format "${inputFormat}" cannot be encoded.`,
-        );
-    }
-
     if (typeof Worker === 'undefined') {
         throw new ImageOptimizerError(
             'browser-not-supported',
@@ -259,6 +239,33 @@ export async function optimizeImage(
 
     const startedAt = performance.now();
     const inputBuffer = await file.arrayBuffer();
+
+    const declaredInputFormat =
+        getImageFormat(file);
+
+    const inputFormat = detectImageFormat(
+        file,
+        inputBuffer,
+    );
+
+    if (!inputFormat) {
+        throw new ImageOptimizerError(
+            'unsupported-format',
+            `Unsupported or unrecognized image format: ${file.type || 'unknown'}.`,
+        );
+    }
+
+    const outputFormat = resolveOutputFormat(
+        inputFormat,
+        options,
+    );
+
+    if (!outputFormat) {
+        throw new ImageOptimizerError(
+            'unsupported-format',
+            `The original format "${inputFormat}" cannot be encoded.`,
+        );
+    }
 
     const workerResult = await processImage(
         inputFormat,
@@ -278,18 +285,22 @@ export async function optimizeImage(
         progress: null,
     });
 
+    const shouldNormalizeOutputMetadata =
+        outputFormat !== inputFormat ||
+        declaredInputFormat !== inputFormat;
+
     const outputFileName =
-        outputFormat === inputFormat
-            ? file.name
-            : getOutputFileName(
+        shouldNormalizeOutputMetadata
+            ? getOutputFileName(
                 file.name,
                 outputFormat,
-            );
+            )
+            : file.name;
 
     const outputMimeType =
-        outputFormat === inputFormat
-            ? file.type
-            : getOutputMimeType(outputFormat);
+        shouldNormalizeOutputMetadata
+            ? getOutputMimeType(outputFormat)
+            : file.type;
 
     const outputFile = new File(
         [workerResult.buffer],
@@ -460,7 +471,8 @@ function processImage(
             if (event.data.type === 'status') {
                 emitStatus(onStatus, {
                     stage: event.data.stage,
-                    progress: event.data.progress,
+                    progress:
+                    event.data.progress,
                 });
 
                 return;

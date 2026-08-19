@@ -35,14 +35,35 @@ describe('optimizeImage options', () => {
     });
 
     it('rejects unsupported image formats', async () => {
-        const promise = optimizeImage(
-            {
-                type: 'image/gif',
-            } as File,
+        vi.stubGlobal(
+            'Worker',
+            class {},
         );
 
-        await expect(promise).rejects.toThrow(ImageOptimizerError);
-        await expect(promise).rejects.toMatchObject({
+        const file = new File(
+            [
+                new Uint8Array([
+                    0x47,
+                    0x49,
+                    0x46,
+                    0x38,
+                ]),
+            ],
+            'image.gif',
+            {
+                type: 'image/gif',
+            },
+        );
+
+        const promise = optimizeImage(file);
+
+        await expect(
+            promise,
+        ).rejects.toThrow(ImageOptimizerError);
+
+        await expect(
+            promise,
+        ).rejects.toMatchObject({
             code: 'unsupported-format',
         });
     });
